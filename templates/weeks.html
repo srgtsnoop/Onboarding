@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Weeks</h1>
+<div class="grid md:grid-cols-2 gap-4">
+    {% for w in weeks %}
+        <a href="{{ url_for('week_detail', week_id=w.id) }}" class="block p-4 rounded-2xl bg-white shadow hover:shadow-md transition border">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">{{ w.title }}</h2>
+                    {% if w.start_date %}
+                        <p class="text-sm text-slate-500">{{ w.start_date.strftime('%b %d, %Y') }}{% if w.end_date %} – {{ w.end_date.strftime('%b %d, %Y') }}{% endif %}</p>
+                    {% endif %}
+                </div>
+                <span class="text-slate-400">→</span>
+            </div>
+            <p class="mt-2 text-slate-600">{{ w.tasks|length }} tasks</p>
+        </a>
+    {% endfor %}
+</div>
+{% endblock %}

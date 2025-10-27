@@ -1,0 +1,42 @@
+{# templates/_task_status_form.html #}
+{# Displays and updates a task’s status using HTMX #}
+
+<div class="task-status-form">
+  {# Auto-update when changed (no Save button needed) #}
+  <select
+    name="status"
+    required
+    hx-post="{{ url_for('edit_status', task_id=t.id) }}"
+    hx-trigger="change"
+    hx-include="this"
+    hx-swap="outerHTML"
+    class="status-select"
+  >
+    {% set options = ["Not Started", "In Progress", "Complete"] %}
+    {% for s in options %}
+      <option value="{{ s }}" {{ 'selected' if t.status == s else '' }}>
+        {{ s }}
+      </option>
+    {% endfor %}
+  </select>
+</div>
+
+<style>
+  .task-status-form {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .status-select {
+    padding: 4px 8px;
+    font-size: 0.9rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+  }
+
+  .status-select:focus {
+    outline: 2px solid #005fa2;
+  }
+</style>

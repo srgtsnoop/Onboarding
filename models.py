@@ -1,46 +1,69 @@
-from __future__ import annotations
-from datetime import date
+# models.py
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Enum as SAEnum
 from enum import Enum
-
+from datetime import date
 
 db = SQLAlchemy()
 
 
-class StatusEnum(str, Enum):
-    TO_START = "To Start"
+# -------------------------------------------------------------------
+# ENUM: Defines the valid task statuses
+# -------------------------------------------------------------------
+class StatusEnum(Enum):
+    NOT_STARTED = "Not Started"
     IN_PROGRESS = "In Progress"
-    BLOCKED = "Blocked"
-    DONE = "Done"
+    COMPLETE = "Complete"
 
 
+# -------------------------------------------------------------------
+# MODEL: Week (a collection of tasks)
+# -------------------------------------------------------------------
 class Week(db.Model):
     __tablename__ = "weeks"
+
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
-    tasks = db.relationship("Task", backref="week", order_by="Task.sort_order")
+
+    # Relationship: one week has many tasks
+    tasks = db.relationship("Task", back_populates="week", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Week {self.name}>"
 
 
+# -------------------------------------------------------------------
+# MODEL: Task (individual onboarding items)
+# -------------------------------------------------------------------
 class Task(db.Model):
     __tablename__ = "tasks"
+
     id = db.Column(db.Integer, primary_key=True)
-    week_id = db.Column(db.Integer, db.ForeignKey("weeks.id"), nullable=False)
+    goal = db.Column(db.String(255), nullable=False)
+    topic = db.Column(db.Text, nullable=True)
+    due_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    sort_order = db.Column(db.Integer, default=0)
 
+    # Relationship to Week
+    week_id = db.Column(db.Integer, db.ForeignKey("weeks.id"), nullable=True)
+    week = db.relationship("Week", back_populates="tasks")
 
-goal = db.Column(db.String(300), nullable=False) # e.g., "Job shadow Joel (his desk)"
-topic = db.Column(db.Text, nullable=True) # bullet list allowed (\n separated)
+    # Status column (stores Enum)
+    status = db.Column(
+        db.Enum(StatusEnum, name="status_enum"),
+        nullable=False,
+        default=StatusEnum.NOT_STARTED,
+    )
 
+    def __repr__(self):
+        return f"<Task {self.id}: {self.goal} [{self.status.value}]>"
 
-due_date = db.Column(db.Date, nullable=True)
-notes = db.Column(db.Text, nullable=True)
+    # Optional: convenience method to display date nicely
+    def formatted_due_date(self):
+        return self.due_date.strftime("%b %d, %Y") if self.due_date else "N/A"
 
-
-status = db.Column(SAEnum(StatusEnum), default=StatusEnum.TO_START, nullable=False)
-sort_order = db.Column(db.Integer, default=0)
-
-
-def status_options(self):
-    return [s.value for s in StatusEnum]
+    # Optional: convenience method for progress logic
+    def is_complete(self):
+        return self.status == StatusEnum.COMPLETE

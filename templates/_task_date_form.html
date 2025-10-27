@@ -1,0 +1,64 @@
+<tr id="task-{{ t.id }}" class="border-t align-top">
+  <td class="p-3">
+    <div class="font-medium">{{ t.goal }}</div>
+    {% if t.topic %}
+      <ul class="text-sm text-slate-600 list-disc ml-10 mt-1 space-y-1">
+        {%- for line in t.topic.split('\n') if line.strip() -%}
+          <li class="leading-5">{{ line }}</li>
+        {%- endfor -%}
+      </ul>
+    {% endif %}
+  </td>
+
+  <td class="p-3">
+    <form
+      hx-post="{{ url_for('update_date', task_id=t.id) }}"
+      hx-target="#task-{{ t.id }}"
+      hx-swap="outerHTML"
+      class="flex flex-col gap-2"
+    >
+      <div class="flex items-center gap-2">
+        <!-- Native picker -->
+        <input
+          id="due-{{ t.id }}"
+          type="date"
+          name="due_date"
+          value="{{ t.due_date.strftime('%Y-%m-%d') if t.due_date }}"
+          class="border rounded-lg p-2"
+          style="min-width: 11.5ch;"
+        />
+        <button class="px-2 py-1 rounded-lg bg-slate-900 text-white text-sm">Save</button>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="flex items-center gap-2 text-xs">
+        <button type="button"
+                class="px-2 py-1 rounded bg-slate-100"
+                onclick="this.form.elements['due_date'].value = new Date().toISOString().slice(0,10); this.form.requestSubmit();">
+          Today
+        </button>
+        <button type="button"
+                class="px-2 py-1 rounded bg-slate-100"
+                onclick="const d=new Date(); d.setDate(d.getDate()+1); this.form.elements['due_date'].value=d.toISOString().slice(0,10); this.form.requestSubmit();">
+          +1d
+        </button>
+        <div class="text-xs text-slate-500">
+            Note: Weekend dates are auto-moved to Monday.
+        </div>
+      </div>
+
+      {% if error %}
+        <div class="text-red-600 text-sm">{{ error }}</div>
+        <div class="text-slate-500 text-xs">
+          Tip: try formats like <code>2025-10-08</code>, <code>10/08/2025</code>, <code>today</code>, <code>tomorrow</code>, <code>+3</code>.
+        </div>
+      {% endif %}
+    </form>
+  </td>
+
+  <td class="p-3">{{ t.notes or 'Click to add notes' }}</td>
+
+  <td class="p-3">
+    <div class="inline-block px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-sm">{{ t.status.value }}</div>
+  </td>
+</tr>

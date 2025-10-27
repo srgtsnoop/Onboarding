@@ -18,14 +18,14 @@
         <thead>
             <tr class="bg-slate-100 text-left text-sm">
                 <th class="p-3">Goals</th>
-                <th class="p-3 w-40">Date</th>
+                <th class="p-3 w-40">Due Date</th>
                 <th class="p-3">Notes</th>
                 <th class="p-3 w-40">Status</th>
             </tr>
             </thead>
             <tbody id="task-body">
             {% for t in week.tasks %}
-            {% include '_task_row.html' with context%}
+                {% include '_task_row.html' with context%}
             {% endfor %}
         </tbody>
     </table>

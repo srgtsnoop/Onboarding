@@ -1,0 +1,28 @@
+<tr id="task-{{ t.id }}" class="border-t align-top">
+    <td class="p-3">
+        <div class="font-medium">{{ t.goal }}</div>
+        {% if t.topic %}
+            <ul class="text-sm text-slate-600 list-disc ml-10 mt-1 space-y-1">
+            {%- for line in t.topic.split('\n') if line.strip() -%}
+                <li class="leading-5">{{ line }}</li>
+            {%- endfor -%}
+            </ul>
+        </ul>
+    {% endif %}
+</td>
+    <td class="p-3">
+        {% if t.due_date %}{{ t.due_date.strftime('%Y-%m-%d') }}{% else %}<span class="text-slate-400">Set date</span>{% endif %}
+    </td>
+    <td class="p-3">
+        <form hx-post="{{ url_for('update_notes', task_id=t.id) }}" hx-target="#task-{{ t.id }}" hx-swap="outerHTML">
+            <textarea name="notes" class="w-full border rounded-lg p-2" rows="3">{{ t.notes or '' }}</textarea>
+            <div class="mt-2 flex gap-2">
+                <button class="px-3 py-2 rounded-xl bg-slate-900 text-white">Save</button>
+                <button type="button" class="px-3 py-2 rounded-xl bg-slate-100" hx-post="{{ url_for('week_detail', week_id=t.week_id) }}" hx-target="#task-{{ t.id }}" hx-swap="outerHTML">Cancel</button>
+            </div>
+        </form>
+    </td>
+    <td class="p-3">
+        <div class="inline-block px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-sm">{{ t.status.value }}</div>
+    </td>
+</tr>

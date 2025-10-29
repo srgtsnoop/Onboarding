@@ -1,28 +1,29 @@
-<tr id="task-{{ t.id }}" class="border-t align-top">
-    <td class="p-3">
-        <div class="font-medium">{{ t.goal }}</div>
-        {% if t.topic %}
-            <ul class="text-sm text-slate-600 list-disc ml-10 mt-1 space-y-1">
-            {%- for line in t.topic.split('\n') if line.strip() -%}
-                <li class="leading-5">{{ line }}</li>
-            {%- endfor -%}
-            </ul>
-        </ul>
+<tr id="task-{{ t.id }}" class="align-top task-row editing">
+  <td class="col-goal align-top">
+    <div class="goal-title fw-semibold">{{ t.title or t.goal }}</div>
+    {% if t.topic %}
+      <div class="goal-topic text-muted small mt-1">
+        <span class="text-secondary">Topic:</span>
+        {{ t.topic | replace('\n','<br>') | safe }}
+      </div>
     {% endif %}
-</td>
-    <td class="p-3">
-        {% if t.due_date %}{{ t.due_date.strftime('%Y-%m-%d') }}{% else %}<span class="text-slate-400">Set date</span>{% endif %}
-    </td>
-    <td class="p-3">
-        <form hx-post="{{ url_for('update_notes', task_id=t.id) }}" hx-target="#task-{{ t.id }}" hx-swap="outerHTML">
-            <textarea name="notes" class="w-full border rounded-lg p-2" rows="3">{{ t.notes or '' }}</textarea>
-            <div class="mt-2 flex gap-2">
-                <button class="px-3 py-2 rounded-xl bg-slate-900 text-white">Save</button>
-                <button type="button" class="px-3 py-2 rounded-xl bg-slate-100" hx-post="{{ url_for('week_detail', week_id=t.week_id) }}" hx-target="#task-{{ t.id }}" hx-swap="outerHTML">Cancel</button>
-            </div>
-        </form>
-    </td>
-    <td class="p-3">
-        <div class="inline-block px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-sm">{{ t.status.value }}</div>
-    </td>
+  </td>
+
+  <td class="col-notes" colspan="2">
+    <form
+      hx-post="{{ url_for('update_notes', task_id=t.id) }}"
+      hx-target="#task-{{ t.id }}"
+      hx-swap="outerHTML"
+      class="mt-2"
+    >
+      <textarea name="notes" rows="5" class="form-control">{{ t.notes or '' }}</textarea>
+      <div class="mt-2">
+        <button class="btn btn-sm btn-primary">Save</button>
+        <a class="btn btn-sm btn-secondary ms-2"
+           hx-get="{{ url_for('view_notes', task_id=t.id) }}"
+           hx-target="#task-{{ t.id }}"
+           hx-swap="outerHTML">Cancel</a>
+      </div>
+    </form>
+  </td>
 </tr>

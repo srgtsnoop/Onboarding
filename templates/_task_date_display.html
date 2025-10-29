@@ -1,0 +1,15 @@
+{# templates/_task_date_display.html #}
+{# Read-only date; click to edit #}
+<div
+  class="inline-flex items-center gap-2 cursor-pointer"
+  hx-get="{{ url_for('edit_date_form', task_id=t.id) }}"
+  hx-target="closest td"
+  hx-swap="innerHTML"
+  aria-label="Edit due date"
+  title="Click to change due date"
+  tabindex="0"
+>
+  <span class="inline-block px-2 py-1 rounded-lg text-sm bg-slate-100 text-slate-800">
+    {{ t.formatted_due_date() if t.due_date else "Set date" }}
+  </span>
+</div>

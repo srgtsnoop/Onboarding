@@ -1,0 +1,26 @@
+/* Minor tweaks; Tailwind handles most styling */
+textarea { resize: vertical; }
+
+.table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table thead th { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+.table tbody td { padding: 12px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+.align-top { vertical-align: top; }
+
+.goal-title { font-weight: 600; }
+.goal-topic { margin-top: 4px; }
+.text-muted, .muted-label, .muted-link { color: #6b7280; }
+.muted-label { font-weight: 600; margin-right: 4px; }
+.muted-link { text-decoration: none; }
+.muted-link:hover { text-decoration: underline; }
+
+.notes-text { white-space: pre-wrap; }
+.notes-area { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; }
+
+.badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+.badge-gray { background: #f3f4f6; color: #374151; }
+.badge-blue { background: #e6f0ff; color: #1f4dbd; }
+.badge-green { background: #e8f6ed; color: #166534; }
+
+.btn { display: inline-block; padding: 6px 12px; border-radius: 6px; border: 0; cursor: pointer; }
+.btn-primary { background: #0f172a; color: #fff; }
+.btn-primary:hover { opacity: .9; }

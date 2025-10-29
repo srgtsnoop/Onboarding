@@ -1,197 +1,275 @@
+# app.py
 from __future__ import annotations
+from sqlalchemy.orm import selectinload
 
-import os
-import re
+import os, re
+from pathlib import Path
 from datetime import date, datetime, timedelta
-
 from dateutil import parser as dtparser
+
 from flask import Flask, render_template, request, redirect, url_for, abort
 
-from models import db, Week, Task, StatusEnum
+# 1) Single shared db instance
+from Onboarding.extensions import db
 
-# ------------------------------
-# Date helpers
-# ------------------------------
+# 2) Paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJ_DIR = os.path.join(BASE_DIR, "Onboarding")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+STATIC_DIR = os.path.join(PROJ_DIR, "static")
+INSTANCE_DIR = os.path.join(PROJ_DIR, "instance")
 
-WEEKEND_DAYS = {5, 6}  # 5=Saturday, 6=Sunday
+print("BASE_DIR     =", BASE_DIR)
+print("PROJ_DIR     =", PROJ_DIR)
+print("TEMPLATES_DIR=", TEMPLATES_DIR)
+print("STATIC_DIR   =", STATIC_DIR)
+print("INSTANCE_DIR =", INSTANCE_DIR)
+
+os.makedirs(INSTANCE_DIR, exist_ok=True)
+
+# 3) Create app
+app = Flask(
+    __name__,
+    template_folder=TEMPLATES_DIR,
+    static_folder=STATIC_DIR,
+    instance_path=INSTANCE_DIR,
+)
+
+# 4) DB config (forward slashes)
+DB_PATH = Path(BASE_DIR, "db.sqlite3").as_posix()
+app.config.update(
+    SQLALCHEMY_DATABASE_URI=f"sqlite:///{DB_PATH}",
+    SQLALCHEMY_TRACK_MODIFICATIONS=False,
+    SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret"),
+)
+
+# 5) Bind db to app
+db.init_app(app)
+
+# 6) ***CRITICAL***: Import models NOW (register tables on this db metadata)
+import Onboarding.models as _models  # noqa: F401
+
+# Optional: bring names into this module if you want
+from Onboarding.models import Week, Task, StatusEnum  # noqa: E402
+
+# 7) Create tables and prove they exist
+with app.app_context():
+    from sqlalchemy import inspect
+
+    print("Metadata tables pre-create_all:", list(db.metadata.tables))
+    db.create_all()
+    print("Tables now:", inspect(db.engine).get_table_names())
+
+# -----------------------------------------------------------------------------
+# Helpers: parse user-entered date strings for due_date
+# Supports: YYYY-MM-DD, today, tomorrow, +N, -N, and lenient dateutil parsing
+# -----------------------------------------------------------------------------
+RELATIVE_RE = re.compile(r"^([+-])\s*(\d{1,3})$")
 
 
-def coerce_date(raw: str) -> date | None:
-    """
-    Accepts:
-      - '' (empty)  -> None
-      - 'YYYY-MM-DD' (native <input type=date>)
-      - 'MM/DD/YYYY', 'M/D/YY', etc.
-      - 'today', 'tomorrow', 'yesterday'
-      - '+N' or '-N' (days offset from today)
-    Returns a date or raises ValueError.
-    """
-    if raw is None:
-        raise ValueError("No value")
-
-    s = raw.strip().lower()
-    if s == "":
+def parse_due_date(text: str | None) -> date | None:
+    if text is None:
+        return None
+    s = text.strip()
+    if not s:
         return None
 
     today = date.today()
 
-    if s in {"today"}:
+    lower = s.lower()
+    if lower == "today":
         return today
-    if s in {"tomorrow", "tmrw"}:
+    if lower == "tomorrow":
         return today + timedelta(days=1)
-    if s in {"yesterday"}:
-        return today - timedelta(days=1)
 
-    # +N / -N days
-    m = re.fullmatch(r"([+-])\s*(\d+)", s)
+    m = RELATIVE_RE.match(s)
     if m:
-        sign, n = m.groups()
-        days = int(n) * (1 if sign == "+" else -1)
-        return today + timedelta(days=days)
+        sign, num = m.groups()
+        delta = int(num)
+        return today + (
+            timedelta(days=delta) if sign == "+" else timedelta(days=-delta)
+        )
 
-    # Try strict HTML date first
     try:
-        return datetime.strptime(s, "%Y-%m-%d").date()
-    except ValueError:
-        pass
-
-    # Try flexible parsing (10/8/2025, 10-08-25, etc.)
-    try:
-        # dayfirst=False for US-style dates; change if you prefer.
-        return dtparser.parse(s, dayfirst=False).date()
-    except Exception as e:
-        raise ValueError(f"Unrecognized date: {raw}") from e
+        dt = dtparser.parse(s, dayfirst=False, yearfirst=True)
+        return dt.date()
+    except Exception as exc:
+        raise ValueError(f"Could not parse due date: {s}") from exc
 
 
-def ensure_weekday(d: date | None) -> tuple[date | None, bool]:
-    """
-    If d is Sat/Sun, roll it forward to the next Monday.
-    Returns (new_date_or_none, adjusted_flag).
-    """
-    if d is None:
-        return None, False
-    adjusted = False
-    while d.weekday() in WEEKEND_DAYS:
-        d += timedelta(days=1)
-        adjusted = True
-    return d, adjusted
-
-
-# ------------------------------
-# App / DB setup
-# ------------------------------
-
-app = Flask(__name__)
-
-# Ensure the SQLite file is created in THIS folder (Windows-safe URI)
-BASEDIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASEDIR, "db.sqlite3")
-DB_URI = "sqlite:///" + DB_PATH.replace("\\", "/")
-
-app.config["SQLALCHEMY_DATABASE_URI"] = DB_URI
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-db.init_app(app)
-
-# ------------------------------
-# Routes
-# ------------------------------
-
-
-@app.route("/")
-def home():
+# -----------------------------------------------------------------------------
+# Routes: basic pages
+# -----------------------------------------------------------------------------
+@app.get("/")
+def index():
     return redirect(url_for("weeks"))
 
 
-@app.route("/weeks")
+@app.get("/weeks")
 def weeks():
-    weeks = Week.query.order_by(Week.id).all()
-    return render_template("weeks.html", weeks=weeks)
+    all_weeks = Week.query.order_by(Week.start_date.asc()).all()
+    return render_template("weeks.html", weeks=all_weeks)
 
 
-@app.route("/week/<int:week_id>")
+@app.get("/weeks/<int:week_id>")
 def week_detail(week_id: int):
-    week = Week.query.get_or_404(week_id)
-    return render_template("week_detail.html", week=week)
+    w = Week.query.get_or_404(week_id)
+    # tasks ordered by sort_order if you have that field; else default by id
+    tasks = (
+        Task.query.filter_by(week_id=w.id).order_by(Task.sort_order.asc()).all()
+        if hasattr(Task, "sort_order")
+        else w.tasks
+    )
+    return render_template("week_detail.html", w=Week, tasks=tasks)
 
 
-# ---------- Inline update endpoints (HTMX) ----------
-
-
-@app.post("/task/<int:task_id>/edit-notes")
-def edit_notes(task_id: int):
-    task = Task.query.get_or_404(task_id)
-    return render_template("_task_status_form.html", t=task, StatusEnum=StatusEnum)
-
-
-@app.post("/task/<int:task_id>/update-notes")
-def update_notes(task_id: int):
-    task = Task.query.get_or_404(task_id)
-    notes = request.form.get("notes", "").strip()
-    task.notes = notes or None
-    db.session.commit()
-    return render_template("_task_row.html", t=task)
-
-
-@app.post("/task/<int:task_id>/edit-date")
-def edit_date(task_id: int):
-    task = Task.query.get_or_404(task_id)
-    return render_template("_task_date_form.html", t=task)
-
-
-@app.post("/task/<int:task_id>/update-date")
-def update_date(task_id: int):
-    task = Task.query.get_or_404(task_id)
-    raw = request.form.get("due_date", "")
-    try:
-        parsed = coerce_date(raw)  # allow flexible inputs (today, 10/8/2025, +2, etc.)
-        parsed, adjusted = ensure_weekday(parsed)  # never allow weekend due dates
-        task.due_date = parsed  # None clears the date
-        db.session.commit()
-        note = "Weekend selected—auto-moved to Monday." if adjusted else None
-        return render_template("_task_row.html", t=task, adjusted_msg=note)
-    except ValueError as err:
-        # Re-render the form with an inline error message
-        return render_template("_task_date_form.html", t=task, error=str(err)), 422
-
-
-@app.post("/task/<int:task_id>/edit-status")
-def edit_status(task_id):
-    task = Task.query.get_or_404(task_id)
-    new_status = request.form.get("status")
-
-    valid_statuses = ["Not Started", "In Progress", "Complete"]
-    if new_status not in valid_statuses:
-        abort(400, f"Invalid status: {new_status}")
-
-    task.status = new_status
-    db.session.commit()
-
-    # Return the same partial to update the HTMX region
-    return render_template("_task_status_form.html", t=task)
-
-
-@app.post("/task/<int:task_id>/update-status")
-def update_status(task_id: int):
-    task = Task.query.get_or_404(task_id)
-    new_status = request.form.get("status")
-    if new_status not in [s.value for s in StatusEnum]:
-        abort(400, "Invalid status")
-    task.status = StatusEnum(new_status)
-    db.session.commit()
-    return render_template("_task_row.html", t=task)
-
-
-# Create new tasks (simple)
-@app.post("/week/<int:week_id>/add-task")
+# -----------------------------------------------------------------------------
+# Routes: create task
+# -----------------------------------------------------------------------------
+@app.post("/weeks/<int:week_id>/tasks")
 def add_task(week_id: int):
-    week = Week.query.get_or_404(week_id)
-    goal = request.form.get("goal", "").strip()
-    topic = request.form.get("topic", "").strip() or None
+    w = (
+        Week.query.options(selectinload(Week.tasks))
+        .filter_by(id=week_id)
+        .first_or_404()
+    )
+    goal = (request.form.get("goal") or "").strip()
+    topic = (request.form.get("topic") or "").strip() or None
     if not goal:
         abort(400, "Goal is required")
-    sort_order = (week.tasks[-1].sort_order + 1) if week.tasks else 0
-    t = Task(week_id=week.id, goal=goal, topic=topic, sort_order=sort_order)
+
+    # sort_order if present
+    if hasattr(Task, "sort_order"):
+        next_sort = (w.tasks[-1].sort_order + 1) if w.tasks else 0
+        t = Task(week_id=w.id, goal=goal, topic=topic, sort_order=next_sort)
+    else:
+        t = Task(week_id=w.id, goal=goal, topic=topic)
+
     db.session.add(t)
     db.session.commit()
-    return redirect(url_for("week_detail", week_id=week.id))
+    return redirect(url_for("week_detail", week_id=w.id))
+
+
+# -----------------------------------------------------------------------------
+# Routes: edit NOTES (inline)
+# Returns the refreshed row partial by default
+# -----------------------------------------------------------------------------
+
+
+@app.get("/tasks/<int:task_id>/notes", endpoint="view_notes")
+def view_notes(task_id):
+    t = Task.query.get_or_404(task_id)
+    # return just the display fragment for HTMX
+    if request.headers.get("HX-Request"):
+        return render_template("_task_row.html", t=t)  # if coming from table
+    # non-HTMX fallback: go back to the task’s week page (adjust as needed)
+    return redirect(url_for("week_detail", week_id=t.week_id))
+
+
+@app.get("/tasks/<int:task_id>/notes/edit", endpoint="edit_notes_form")
+def edit_notes_form(task_id):
+    t = Task.query.get_or_404(task_id)
+    return render_template("_task_notes_form.html", t=t)
+
+
+@app.post("/tasks/<int:task_id>/notes", endpoint="update_notes")
+def update_notes(task_id):
+    t = Task.query.get_or_404(task_id)
+    # pull from form, normalize
+    new_notes = (request.form.get("notes") or "").strip()
+    t.notes = (request.form.get("notes") or "").strip()
+    db.session.commit()
+    if request.headers.get("HX-Request"):
+        # send the display fragment back into the same target
+        return render_template("_task_row.html", t=t)  # or "_task_card.html"
+    return redirect(url_for("week_detail", week_id=t.week_id))
+
+
+# -----------------------------------------------------------------------------
+# Routes: edit DUE DATE (inline)
+# Accepts user-friendly strings (today, +3, 2025-10-08, etc.)
+# -----------------------------------------------------------------------------
+# ---------- Due date inline edit (HTMX) ----------
+@app.get("/tasks/<int:task_id>/due-date/edit")
+def edit_date_form(task_id: int):
+    t = Task.query.get_or_404(task_id)
+    return render_template("_task_date_form.html", t=t)
+
+
+@app.get("/tasks/<int:task_id>/due-date/view")
+def view_date(task_id: int):
+    t = Task.query.get_or_404(task_id)
+    return render_template("_task_date_display.html", t=t)
+
+
+@app.post("/tasks/<int:task_id>/due-date")
+def edit_date(task_id: int):
+    t = Task.query.get_or_404(task_id)
+    raw = (request.form.get("due_date") or "").strip()
+    try:
+        parsed = parse_due_date(raw)  # your helper
+    except ValueError as e:
+        return render_template("_task_date_form.html", t=t, error=str(e)), 400
+    t.due_date = parsed
+    db.session.commit()
+    return render_template("_task_date_display.html", t=t)
+
+
+# -----------------------------------------------------------------------------
+# Routes: STATUS inline edit using click → form → Save/Cancel (HTMX)
+# -----------------------------------------------------------------------------
+@app.get("/tasks/<int:task_id>/status/edit")
+def edit_status_form(task_id: int):
+    t = Task.query.get_or_404(task_id)
+    return render_template("_task_status_form.html", t=t)
+
+
+@app.get("/tasks/<int:task_id>/status/view")
+def view_status(task_id: int):
+    t = Task.query.get_or_404(task_id)
+    return render_template("_task_status_display.html", t=t)
+
+
+@app.post("/tasks/<int:task_id>/status")
+def edit_status(task_id: int):
+    t = Task.query.get_or_404(task_id)
+    label = (request.form.get("status") or "").strip()
+
+    # Validate against Enum values
+    valid_values = [e.value for e in StatusEnum]
+    if label not in valid_values:
+        return (
+            render_template("_task_status_form.html", t=t, error="Invalid status"),
+            400,
+        )
+
+    # Convert string to enum by value and save
+    t.status = StatusEnum(label)
+    db.session.commit()
+
+    # Return to read-only display after save
+    return render_template("_task_status_display.html", t=t)
+
+
+# -----------------------------------------------------------------------------
+# Optional: simple health check
+# -----------------------------------------------------------------------------
+@app.get("/healthz")
+def healthz():
+    return {"ok": True, "time": datetime.utcnow().isoformat()}
+
+
+@app.get("/debug/db")
+def debug_db():
+    return {
+        "db_path": app.config["SQLALCHEMY_DATABASE_URI"],
+        "weeks_count": Week.query.count(),
+        "tasks_count": Task.query.count(),
+    }
+
+
+# -----------------------------------------------------------------------------
+# Dev entry
+# -----------------------------------------------------------------------------
+if __name__ == "__main__":
+    app.run(debug=True)

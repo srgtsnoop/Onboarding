@@ -1,48 +1,33 @@
-<tr id="task-{{ t.id }}" class="border-t align-top">
-    <td class="p-3">
-        <div class="font-medium">{{ t.goal }}</div>
-        {% if t.topic %}
-            <ul class="text-sm text-slate-600 list-disc ml-10 mt-1 space-y-1">
-            {%- for line in t.topic.split('\n') if line.strip() -%}
-                <li class="leading-5">{{ line }}</li>
-            {%- endfor -%}
-            </ul>
-        </ul>
+<tr id="task-{{ t.id }}" class="align-top task-row">
+  <td class="col-goal">
+    <div class="goal-title fw-semibold">{{ t.title or t.goal }}</div>
+    {% if t.topic %}
+      <div class="goal-topic text-muted small mt-1">
+        <span class="text-secondary">Topic:</span>
+        {{ t.topic | replace('\n','<br>') | safe }}
+      </div>
     {% endif %}
-</td>
+  </td>
 
-
-<td class="p-3">
-  <div
-    hx-post="{{ url_for('edit_date', task_id=t.id) }}"
-    hx-target="#task-{{ t.id }}"
-    hx-swap="outerHTML"
-    class="cursor-pointer"
-  >
-    {% if t.due_date %}
-      {{ t.due_date.strftime('%b %d, %Y') }}
+  <td class="col-notes">
+    {% if t.notes %}
+      <div class="notes-preview small">{{ t.notes | replace('\n','<br>') | safe }}</div>
+      <a class="muted-link small d-block mt-1"
+         hx-get="{{ url_for('edit_notes_form', task_id=t.id) }}"
+         hx-target="#task-{{ t.id }}"
+         hx-swap="outerHTML">Edit notes</a>
     {% else %}
-      <span class="text-slate-400">Set date</span>
+      <a class="muted-link small"
+         hx-get="{{ url_for('edit_notes_form', task_id=t.id) }}"
+         hx-target="#task-{{ t.id }}"
+         hx-swap="outerHTML">Click to add notes</a>
     {% endif %}
-  </div>
-  {% if adjusted_msg %}
-    <div class="text-xs text-slate-500 mt-1">{{ adjusted_msg }}</div>
-  {% endif %}
-</td>
+  </td>
 
-
-<td class="p-3">
-    <div hx-post="{{ url_for('edit_notes', task_id=t.id) }}" hx-target="#task-{{ t.id }}" hx-swap="outerHTML" class="min-h-[2rem] cursor-text whitespace-pre-line">{{ t.notes or 'Click to add notes' }}</div>
-</td>
-
-
-<td class="p-3">
-    <div hx-post="{{ url_for('edit_status', task_id=t.id) }}" hx-target="#task-{{ t.id }}" hx-swap="outerHTML" class="cursor-pointer inline-block px-2 py-1 rounded-lg text-sm
-        {% if t.status.value == 'Done' %} bg-green-100 text-green-800
-        {% elif t.status.value == 'In Progress' %} bg-blue-100 text-blue-800
-        {% elif t.status.value == 'Blocked' %} bg-red-100 text-red-800
-        {% else %} bg-slate-100 text-slate-700 {% endif %}">
-        {{ t.status.value }}
-    </div>
-</td>
+  <td class="col-status text-center">
+    {% set s = t.status %}
+    <span class="badge {{ 'badge-gray' if s=='Not Started' else 'badge-blue' if s=='In Progress' else 'badge-green' }}">
+      {{ s }}
+    </span>
+  </td>
 </tr>

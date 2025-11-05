@@ -6,7 +6,7 @@ import os, re
 from pathlib import Path
 from datetime import date, datetime, timedelta
 from dateutil import parser as dtparser
-
+import time
 from flask import Flask, render_template, request, redirect, url_for, abort
 
 # 1) Single shared db instance
@@ -97,6 +97,11 @@ def parse_due_date(text: str | None) -> date | None:
         raise ValueError(f"Could not parse due date: {s}") from exc
 
 
+@app.context_processor
+def inject_build_ts():
+    return {"build_ts": int(time.time())}
+
+
 # -----------------------------------------------------------------------------
 # Routes: basic pages
 # -----------------------------------------------------------------------------
@@ -114,13 +119,12 @@ def weeks():
 @app.get("/weeks/<int:week_id>")
 def week_detail(week_id: int):
     w = Week.query.get_or_404(week_id)
-    # tasks ordered by sort_order if you have that field; else default by id
     tasks = (
-        Task.query.filter_by(week_id=w.id).order_by(Task.sort_order.asc()).all()
-        if hasattr(Task, "sort_order")
-        else w.tasks
+        Task.query.filter_by(week_id=w.id)
+        .order_by(Task.sort_order.asc(), Task.id.asc())
+        .all()
     )
-    return render_template("week_detail.html", w=Week, tasks=tasks)
+    return render_template("week_detail.html", w=w, tasks=tasks)
 
 
 # -----------------------------------------------------------------------------
@@ -128,22 +132,31 @@ def week_detail(week_id: int):
 # -----------------------------------------------------------------------------
 @app.post("/weeks/<int:week_id>/tasks")
 def add_task(week_id: int):
-    w = (
-        Week.query.options(selectinload(Week.tasks))
-        .filter_by(id=week_id)
-        .first_or_404()
-    )
-    goal = (request.form.get("goal") or "").strip()
-    topic = (request.form.get("topic") or "").strip() or None
-    if not goal:
-        abort(400, "Goal is required")
+    w = Week.query.get_or_404(week_id)
+    title = request.form.get("goal", "").strip()
+    topic = request.form.get("topic", "").strip()
+    notes = request.form.get("notes", "").strip()
+    due_raw = request.form.get("due_date", "").strip()
 
-    # sort_order if present
-    if hasattr(Task, "sort_order"):
-        next_sort = (w.tasks[-1].sort_order + 1) if w.tasks else 0
-        t = Task(week_id=w.id, goal=goal, topic=topic, sort_order=next_sort)
-    else:
-        t = Task(week_id=w.id, goal=goal, topic=topic)
+    # parse date if provided and model supports it
+    due_date = None
+    if due_raw:
+        try:
+            due_date = datetime.strptime(due_raw, "%Y-%m-%d").date()
+        except ValueError:
+            pass  # keep None
+
+    t = Task(
+        week_id=w.id,
+        title=title,
+        topic=topic,
+        notes=notes,
+        status="Not Started",  # default status
+        sort_order=(Task.query.filter_by(week_id=w.id).count() + 1),
+    )
+    # only set due_date if your model has that column
+    if hasattr(Task, "due_date"):
+        t.due_date = due_date
 
     db.session.add(t)
     db.session.commit()

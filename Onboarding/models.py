@@ -50,6 +50,7 @@ class Task(db.Model):
     title = db.Column(db.String(255), nullable=True)
     goal = db.Column(db.String(255), nullable=True)
     topic = db.Column(db.Text, nullable=True)
+    due_date = db.Column(db.Date, nullable=True)  # <-- add this
 
     # Store the status as a string matching StatusEnum values
     status = db.Column(
@@ -61,6 +62,9 @@ class Task(db.Model):
 
     def __repr__(self):
         return f"<Task {self.id}: {self.goal or self.title} [{self.status}]>"
+
+    def formatted_due_date(self) -> str:
+        return self.due_date.strftime("%b %-d, %Y") if self.due_date else ""
 
     def is_complete(self):
         return self.status == StatusEnum.COMPLETE.value

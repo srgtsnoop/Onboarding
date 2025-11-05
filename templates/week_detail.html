@@ -1,16 +1,128 @@
-<h1 class="mb-4">{{ w.title }}</h1>
+{% extends "base.html" %}
+{% block title %}Onboarding{% endblock %}
 
-<table class="table align-top">
-  <thead>
-    <tr>
-      <th class="col-goal">Goal</th>
-      <th class="col-notes">Notes</th>
-      <th class="col-status text-center">Status</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for t in w.tasks %}
-      {% include "_task_row.html" %}
-    {% endfor %}
-  </tbody>
-</table>
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-6">
+
+  <h1 class="text-2xl font-semibold mb-4">Onboarding</h1>
+
+  {# ---------- Add Task ---------- #}
+  <div class="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+    <form action="{{ url_for('add_task', week_id=w.id) }}" method="post" class="space-y-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label for="goal" class="block text-sm font-medium mb-1">Goal</label>
+          <input id="goal" name="goal" type="text" required
+                 placeholder="Goal (e.g., Job shadow Joel)"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2">
+        </div>
+
+        <div>
+          <label for="topic" class="block text-sm font-medium mb-1">Topic (optional)</label>
+          <input id="topic" name="topic" type="text"
+                 placeholder="Separate topics with ; or newlines"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label for="due_date" class="block text-sm font-medium mb-1">Due Date (optional)</label>
+          <input id="due_date" name="due_date" type="date"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2">
+        </div>
+
+        <div class="md:col-span-2">
+          <label for="notes" class="block text-sm font-medium mb-1">Notes (optional)</label>
+          <input id="notes" name="notes" type="text" placeholder="Notes…"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2">
+        </div>
+      </div>
+
+      <div>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+
+  {# ---------- Goals Table ---------- #}
+  <div class="bg-white border border-gray-200 rounded-lg">
+    <table class="table">
+      <thead>
+        <tr>
+          <th class="w-1/2">Goals</th>
+          <th class="w-1/6">Due Date</th>
+          <th class="w-1/4">Notes</th>
+          <th class="w-1/12 text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tasks or w.tasks %}
+        <tr class="align-top" id="task-{{ t.id }}">
+          <td class="col-goal">
+            {# --- Goal Title --- #}
+            <div class="goal-title text-black font-bold">
+              {{ t.goal or t.title or t.name }}
+            </div>
+
+            {# --- Topics --- #}
+            {% macro clean(s) -%}
+              {{- s.replace('Topic:', '').replace('topic:', '').strip(' :') -}}
+            {%- endmacro %}
+
+            {% set raw_topics = t.topic or t.topics %}
+            {% if raw_topics %}
+              {% set pieces = raw_topics.split('\n') if '\n' in raw_topics else raw_topics.split(';') %}
+              {% set cleaned = [] %}
+              {% for p in pieces %}
+                {% set itm = clean(p.strip()) %}
+                {% if itm %}{% set _ = cleaned.append(itm) %}{% endif %}
+              {% endfor %}
+
+              {% if cleaned|length > 1 %}
+                <ul class="goal-topic list-disc pl-5 mt-1">
+                  {% for item in cleaned %}
+                    <li>{{ item }}</li>
+                  {% endfor %}
+                </ul>
+              {% elif cleaned|length == 1 %}
+                <div class="goal-topic mt-1 text-muted">{{ cleaned[0] }}</div>
+              {% endif %}
+            {% endif %}
+          </td>
+
+          <td>
+            {% if t.due_date %}
+              {{ t.due_date.strftime("%b %d, %Y") }}
+            {% else %}
+              <span class="text-muted">Set date</span>
+            {% endif %}
+          </td>
+
+          <td class="notes-text">
+            {% if t.notes %}
+              {{ t.notes }}
+            {% else %}
+              <span class="text-muted">Click to add notes</span>
+            {% endif %}
+          </td>
+
+          <td class="text-center">
+            {% set s = (t.status or 'Not Started') %}
+            <span class="badge
+                         {% if s == 'Complete' %}badge-green
+                         {% elif s == 'In Progress' %}badge-blue
+                         {% else %}badge-gray{% endif %}">
+              {{ s }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-muted">No tasks yet. Add one above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

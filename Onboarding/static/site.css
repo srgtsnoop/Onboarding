@@ -1,26 +1,103 @@
 /* Minor tweaks; Tailwind handles most styling */
 textarea { resize: vertical; }
 
-.table { width: 100%; border-collapse: separate; border-spacing: 0; }
-.table thead th { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
-.table tbody td { padding: 12px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+/* -------------------------
+   Table Styling
+-------------------------- */
+.table { 
+  width: 100%; 
+  border-collapse: separate; 
+  border-spacing: 0; 
+}
+
+/* Header */
+.table thead tr {
+  background: #f3f4f6;                /* light gray header background */
+}
+
+.table thead th { 
+  text-align: left;                   /* left justified */
+  vertical-align: middle;             /* centered vertically */
+  font-weight: 700;                   /* bold text */
+  padding: 12px 14px;                 /* spacing around header text */
+  border-bottom: 1px solid #e5e7eb;   /* subtle divider */
+  line-height: 1.25rem;               /* consistent vertical rhythm */
+}
+
+/* Optional rounded corners on first and last header cells */
+.table thead th:first-child { border-top-left-radius: 8px; }
+.table thead th:last-child  { border-top-right-radius: 8px; }
+
+/* Body */
+.table tbody td { 
+  padding: 12px; 
+  border-bottom: 1px solid #f0f2f5; 
+  vertical-align: top; 
+}
+
 .align-top { vertical-align: top; }
 
-.goal-title { font-weight: 600; }
+/* -------------------------
+   Text & Goal Formatting
+-------------------------- */
+.goal-title {
+  font-weight: 700 !important;
+  color: #111827 !important; /* Tailwind gray-900 (nearly black) */
+  margin-bottom: 2px;
+}
 .goal-topic { margin-top: 4px; }
 .text-muted, .muted-label, .muted-link { color: #6b7280; }
 .muted-label { font-weight: 600; margin-right: 4px; }
 .muted-link { text-decoration: none; }
 .muted-link:hover { text-decoration: underline; }
 
+/* -------------------------
+   Notes Fields
+-------------------------- */
 .notes-text { white-space: pre-wrap; }
-.notes-area { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; }
+.notes-area { 
+  width: 100%; 
+  padding: 10px; 
+  border: 1px solid #d1d5db; 
+  border-radius: 6px; 
+}
 
-.badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+/* -------------------------
+   Status Badges
+-------------------------- */
+.badge { 
+  display: inline-block; 
+  padding: 4px 10px; 
+  border-radius: 9999px; 
+  font-size: 12px; 
+  font-weight: 600; 
+}
+
 .badge-gray { background: #f3f4f6; color: #374151; }
 .badge-blue { background: #e6f0ff; color: #1f4dbd; }
 .badge-green { background: #e8f6ed; color: #166534; }
 
-.btn { display: inline-block; padding: 6px 12px; border-radius: 6px; border: 0; cursor: pointer; }
-.btn-primary { background: #0f172a; color: #fff; }
+/* -------------------------
+   Buttons
+-------------------------- */
+.btn { 
+  display: inline-block; 
+  padding: 6px 12px; 
+  border-radius: 6px; 
+  border: 0; 
+  cursor: pointer; 
+}
+
+.btn-primary { 
+  background: #0f172a; 
+  color: #fff; 
+}
+
 .btn-primary:hover { opacity: .9; }
+
+/* === FINAL OVERRIDE FOR GOAL TITLE === */
+.goal-title,
+.table tbody td .goal-title {
+  color: #111827 !important;   /* near-black */
+  font-weight: 700 !important; /* bold */
+}

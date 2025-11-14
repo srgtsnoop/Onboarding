@@ -24,7 +24,7 @@
     {% endif %}
   </td>
 
-  <td class="col-status text-center">
+  <td class="col-status text-left">
     {% set s = t.status %}
     <span class="badge {{ 'badge-gray' if s=='Not Started' else 'badge-blue' if s=='In Progress' else 'badge-green' }}">
       {{ s }}

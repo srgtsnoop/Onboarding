@@ -64,7 +64,10 @@ class Task(db.Model):
         return f"<Task {self.id}: {self.goal or self.title} [{self.status}]>"
 
     def formatted_due_date(self) -> str:
-        return self.due_date.strftime("%b %-d, %Y") if self.due_date else ""
+        if not self.due_date:
+            return ""
+        # Use a portable format, then clean up the leading zero in the day
+        return self.due_date.strftime("%b %d, %Y").replace(" 0", " ")
 
     def is_complete(self):
         return self.status == StatusEnum.COMPLETE.value

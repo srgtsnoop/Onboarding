@@ -45,8 +45,8 @@ textarea { resize: vertical; }
   color: #111827 !important; /* Tailwind gray-900 (nearly black) */
   margin-bottom: 2px;
 }
-.goal-topic { margin-top: 4px; }
-.text-muted, .muted-label, .muted-link { color: #6b7280; }
+.goal-topic { margin-top: 4px; margin-left: 25; list-style-position: outside;}
+.text-muted, .muted-label, .muted-link { color: #111827; }
 .muted-label { font-weight: 600; margin-right: 4px; }
 .muted-link { text-decoration: none; }
 .muted-link:hover { text-decoration: underline; }
@@ -54,7 +54,13 @@ textarea { resize: vertical; }
 /* -------------------------
    Notes Fields
 -------------------------- */
-.notes-text { white-space: pre-wrap; }
+.notes-text {
+  white-space: pre-wrap;
+  text-align: left;
+  vertical-align: top;
+  padding-top: 8px; /* small breathing space from the border */
+}
+
 .notes-area { 
   width: 100%; 
   padding: 10px; 
@@ -100,4 +106,32 @@ textarea { resize: vertical; }
 .table tbody td .goal-title {
   color: #111827 !important;   /* near-black */
   font-weight: 700 !important; /* bold */
+}
+
+/* Make goal-topic indent 40px whether it's a <ul> or a single-line <div> */
+.table tbody td .goal-topic {
+  padding-left: 40px !important;   /* <-- controls the visual indent */
+  margin-left: 0 !important;       /* ignore any margin-left you tried */
+}
+
+/* Keep bullets outside and aligned nicely when it's a list */
+.table tbody td .goal-topic.list-disc {
+  list-style-position: outside;
+}
+
+/* Ensure any row marked align-top actually aligns its cells to the top */
+.table tbody tr.align-top > td {
+  vertical-align: top !important;
+}
+
+/* Notes cell: top-left, no surprises */
+.table tbody td.notes-text {
+  vertical-align: top !important;
+  text-align: left !important;
+  padding-top: 8px; /* optional breathing room */
+}
+
+/* If a child element tried to center text, neutralize it */
+.table tbody td.notes-text * {
+  text-align: left !important;
 }

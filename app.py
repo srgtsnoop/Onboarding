@@ -6,8 +6,11 @@ import os, re
 from pathlib import Path
 from datetime import date, datetime, timedelta
 from dateutil import parser as dtparser
+
 import time
+
 from flask import Flask, render_template, request, redirect, url_for, abort
+from Onboarding.models import Week, Task, StatusEnum
 
 # 1) Single shared db instance
 from Onboarding.extensions import db
@@ -202,27 +205,57 @@ def update_notes(task_id):
 # Routes: edit DUE DATE (inline)
 # Accepts user-friendly strings (today, +3, 2025-10-08, etc.)
 # -----------------------------------------------------------------------------
+def _parse_due_date(s: str):
+    """Accept YYYY-MM-DD (browser date), MM/DD/YY, MM/DD/YYYY."""
+    s = (s or "").strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%m/%d/%y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
 # ---------- Due date inline edit (HTMX) ----------
-@app.get("/tasks/<int:task_id>/due-date/edit")
+@app.get("/tasks/<int:task_id>/due-date/form", endpoint="edit_date_form")
 def edit_date_form(task_id: int):
     t = Task.query.get_or_404(task_id)
     return render_template("_task_date_form.html", t=t)
 
 
-@app.get("/tasks/<int:task_id>/due-date/view")
-def view_date(task_id: int):
+@app.get("/tasks/<int:task_id>/due-date/display", endpoint="date_display")
+def date_display(task_id: int):
     t = Task.query.get_or_404(task_id)
     return render_template("_task_date_display.html", t=t)
 
 
-@app.post("/tasks/<int:task_id>/due-date")
-def edit_date(task_id: int):
+@app.post("/tasks/<int:task_id>/due-date", endpoint="update_due_date")
+def update_due_date(task_id: int):
     t = Task.query.get_or_404(task_id)
-    raw = (request.form.get("due_date") or "").strip()
-    try:
-        parsed = parse_due_date(raw)  # your helper
-    except ValueError as e:
-        return render_template("_task_date_form.html", t=t, error=str(e)), 400
+
+    # Clear?
+    if request.form.get("clear") == "1":
+        t.due_date = None
+        db.session.commit()
+        return render_template("_task_date_display.html", t=t)
+
+    # Try both inputs (native date + freeform text)
+    raw = (
+        request.form.get("due_date") or request.form.get("due_date_text") or ""
+    ).strip()
+    parsed = _parse_due_date(raw)
+
+    if raw and parsed is None:
+        # Re-render the form with an error
+        return (
+            render_template(
+                "_task_date_form.html", t=t, error="Enter a valid date (MM/DD/YY)."
+            ),
+            400,
+        )
+
     t.due_date = parsed
     db.session.commit()
     return render_template("_task_date_display.html", t=t)

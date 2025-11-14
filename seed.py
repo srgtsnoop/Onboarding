@@ -76,22 +76,21 @@ with app.app_context():
             kw["sort_order"] = sort_order
         return kw
 
-    t1 = Task(
-        **task_kwargs(
-            week_id=w1.id,
-            goal="Job shadow Joel (his desk)",
-            topic="Topic: Communication/outage alarms",
-            status=StatusEnum.NOT_STARTED,
-            notes="Schedule meetings and catchups, if possible.",
-            sort_order=0,
-        )
-    )
+    # t1 = Task(
+    #    **task_kwargs(
+    #        week_id=w1.id,
+    #        goal="Job shadow Joel (his desk)",
+    #        topic=("Communication/outage alarms"),
+    #        status=StatusEnum.NOT_STARTED,
+    #        notes="Schedule meetings and catchups, if possible.",
+    #        sort_order=0,
+    #   )
+    # )
     t2 = Task(
         **task_kwargs(
             week_id=w1.id,
             goal="Job Shadow Jennifer (her desk)",
             topic=(
-                "Topics:\n"
                 " Overview of flow of an incident\n"
                 " Organizations\n"
                 " Facilities\n"
@@ -130,7 +129,8 @@ with app.app_context():
         )
     )
 
-    db.session.add_all([t1, t2, t3])
+    # db.session.add_all([t1, t2, t3])
+    db.session.add_all([t2, t3])
     db.session.commit()
 
     print(f"✅ Seed complete! Weeks: {Week.query.count()}, Tasks: {Task.query.count()}")

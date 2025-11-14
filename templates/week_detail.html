@@ -2,7 +2,7 @@
 {% block title %}Onboarding{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto px-4 py-6">
 
   <h1 class="text-2xl font-semibold mb-4">Onboarding</h1>
 
@@ -53,7 +53,7 @@
           <th class="w-1/2">Goals</th>
           <th class="w-1/6">Due Date</th>
           <th class="w-1/4">Notes</th>
-          <th class="w-1/12 text-center">Status</th>
+          <th class="text-center w-[240px]">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -92,14 +92,10 @@
           </td>
 
           <td>
-            {% if t.due_date %}
-              {{ t.due_date.strftime("%b %d, %Y") }}
-            {% else %}
-              <span class="text-muted">Set date</span>
-            {% endif %}
+            {% include "_task_date_display.html" %}
           </td>
 
-          <td class="notes-text">
+          <td class="notes-text align-top">
             {% if t.notes %}
               {{ t.notes }}
             {% else %}
@@ -107,7 +103,7 @@
             {% endif %}
           </td>
 
-          <td class="text-center">
+          <td class="text-center min-w-40">
             {% set s = (t.status or 'Not Started') %}
             <span class="badge
                          {% if s == 'Complete' %}badge-green

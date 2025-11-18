@@ -1,29 +1,31 @@
-<tr id="task-{{ t.id }}" class="align-top task-row editing">
-  <td class="col-goal align-top">
-    <div class="goal-title fw-semibold">{{ t.title or t.goal }}</div>
-    {% if t.topic %}
-      <div class="goal-topic text-muted small mt-1">
-        <span class="text-secondary">Topic:</span>
-        {{ t.topic | replace('\n','<br>') | safe }}
-      </div>
-    {% endif %}
-  </td>
+{# templates/_task_notes_form.html #}
+<form
+  hx-post="{{ url_for('update_notes', task_id=t.id) }}"
+  hx-target="closest td"
+  hx-swap="innerHTML"
+  class="w-full"
+>
+  <textarea
+    name="notes"
+    rows="3"
+    class="w-full text-sm border rounded-md p-1"
+    autofocus
+  >{{ t.notes or "" }}</textarea>
 
-  <td class="col-notes" colspan="2">
-    <form
-      hx-post="{{ url_for('update_notes', task_id=t.id) }}"
-      hx-target="#task-{{ t.id }}"
-      hx-swap="outerHTML"
-      class="mt-2"
+  <div class="mt-2 flex gap-2">
+    <button type="submit" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
+      Save
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-sm"
+      onclick="event.stopPropagation();"
+      hx-get="{{ url_for('cancel_notes_edit', task_id=t.id) }}"
+      hx-target="closest td"
+      hx-swap="innerHTML"
     >
-      <textarea name="notes" rows="5" class="form-control">{{ t.notes or '' }}</textarea>
-      <div class="mt-2">
-        <button class="btn btn-sm btn-primary">Save</button>
-        <a class="btn btn-sm btn-secondary ms-2"
-           hx-get="{{ url_for('view_notes', task_id=t.id) }}"
-           hx-target="#task-{{ t.id }}"
-           hx-swap="outerHTML">Cancel</a>
-      </div>
-    </form>
-  </td>
-</tr>
+      Cancel
+    </button>
+  </div>
+</form>

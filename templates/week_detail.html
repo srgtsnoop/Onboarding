@@ -95,23 +95,20 @@
             {% include "_task_date_display.html" %}
           </td>
 
-          <td class="notes-text align-top">
-            {% if t.notes %}
-              {{ t.notes }}
-            {% else %}
-              <span class="text-muted">Click to add notes</span>
-            {% endif %}
+          <td
+            class="notes-text"
+            hx-get="{{ url_for('edit_notes_form', task_id=t.id) }}"
+            hx-target="closest td"
+            hx-swap="innerHTML"
+            title="Click to edit notes"
+          >
+            {% include "_task_notes_display.html" %}
           </td>
 
           <td class="text-center min-w-40">
-            {% set s = (t.status or 'Not Started') %}
-            <span class="badge
-                         {% if s == 'Complete' %}badge-green
-                         {% elif s == 'In Progress' %}badge-blue
-                         {% else %}badge-gray{% endif %}">
-              {{ s }}
-            </span>
+            {% include "_task_status_display.html" %}
           </td>
+
         </tr>
         {% else %}
         <tr><td colspan="4" class="text-muted">No tasks yet. Add one above.</td></tr>

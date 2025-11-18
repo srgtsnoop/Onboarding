@@ -16,12 +16,12 @@ textarea { resize: vertical; }
 }
 
 .table thead th { 
-  text-align: left;                   /* left justified */
-  vertical-align: middle;             /* centered vertically */
-  font-weight: 700;                   /* bold text */
-  padding: 12px 14px;                 /* spacing around header text */
-  border-bottom: 1px solid #e5e7eb;   /* subtle divider */
-  line-height: 1.25rem;               /* consistent vertical rhythm */
+  text-align: left;                   
+  vertical-align: middle;             
+  font-weight: 700;                   
+  padding: 12px 14px;                 
+  border-bottom: 1px solid #e5e7eb;   
+  line-height: 1.25rem;               
 }
 
 /* Optional rounded corners on first and last header cells */
@@ -42,30 +42,52 @@ textarea { resize: vertical; }
 -------------------------- */
 .goal-title {
   font-weight: 700 !important;
-  color: #111827 !important; /* Tailwind gray-900 (nearly black) */
+  color: #111827 !important; 
   margin-bottom: 2px;
 }
-.goal-topic { margin-top: 4px; margin-left: 25; list-style-position: outside;}
+
+.goal-topic { 
+  margin-top: 4px; 
+  margin-left: 25; 
+  list-style-position: outside;
+}
+
 .text-muted, .muted-label, .muted-link { color: #111827; }
 .muted-label { font-weight: 600; margin-right: 4px; }
 .muted-link { text-decoration: none; }
 .muted-link:hover { text-decoration: underline; }
 
 /* -------------------------
-   Notes Fields
+   Notes Fields (Base)
 -------------------------- */
 .notes-text {
   white-space: pre-wrap;
   text-align: left;
   vertical-align: top;
-  padding-top: 8px; /* small breathing space from the border */
+  padding-top: 8px;
 }
 
-.notes-area { 
-  width: 100%; 
-  padding: 10px; 
-  border: 1px solid #d1d5db; 
-  border-radius: 6px; 
+/* Notes column (final consistent behavior) */
+.table tbody td.notes-text {
+  vertical-align: top !important;
+  text-align: left !important;
+  padding-top: 8px;
+}
+
+/* Make the notes display block always fill horizontally */
+.table tbody td.notes-text .notes-display {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  text-align: left !important;
+  white-space: pre-wrap !important;
+}
+
+/* Ensure nothing inside ever tries to center itself */
+.table tbody td.notes-text {
+  vertical-align: top !important;
+  text-align: left !important;
+  padding: 4px 0 !important;
 }
 
 /* -------------------------
@@ -91,7 +113,9 @@ textarea { resize: vertical; }
   padding: 6px 12px; 
   border-radius: 6px; 
   border: 0; 
-  cursor: pointer; 
+  cursor: pointer;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .btn-primary { 
@@ -101,37 +125,41 @@ textarea { resize: vertical; }
 
 .btn-primary:hover { opacity: .9; }
 
+/* -----------------------
+    Button Small
+-----------------------*/
+.btn-sm {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  width: 80px !important;
+  height: 40px !important;
+  padding: 2px 0 !important;
+  margin: 0 !important;
+
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  text-indent: 0 !important;
+  white-space: nowrap !important;
+
+  border-radius: 4px !important;
+}
+
 /* === FINAL OVERRIDE FOR GOAL TITLE === */
 .goal-title,
 .table tbody td .goal-title {
-  color: #111827 !important;   /* near-black */
-  font-weight: 700 !important; /* bold */
+  color: #111827 !important;
+  font-weight: 700 !important;
 }
 
-/* Make goal-topic indent 40px whether it's a <ul> or a single-line <div> */
+/* Consistent indent for topic list or single item */
 .table tbody td .goal-topic {
-  padding-left: 40px !important;   /* <-- controls the visual indent */
-  margin-left: 0 !important;       /* ignore any margin-left you tried */
+  padding-left: 40px !important;
+  margin-left: 0 !important;
 }
 
-/* Keep bullets outside and aligned nicely when it's a list */
 .table tbody td .goal-topic.list-disc {
   list-style-position: outside;
-}
-
-/* Ensure any row marked align-top actually aligns its cells to the top */
-.table tbody tr.align-top > td {
-  vertical-align: top !important;
-}
-
-/* Notes cell: top-left, no surprises */
-.table tbody td.notes-text {
-  vertical-align: top !important;
-  text-align: left !important;
-  padding-top: 8px; /* optional breathing room */
-}
-
-/* If a child element tried to center text, neutralize it */
-.table tbody td.notes-text * {
-  text-align: left !important;
 }

@@ -1,11 +1,4 @@
-<div id="task-notes-{{ t.id }}" class="task-notes">
-  <div class="notes-body">{{ t.notes if t.notes else "—" }}</div>
-  <button
-    type="button"
-    hx-get="{{ url_for('edit_notes_form', task_id=t.id) }}"
-    hx-target="#task-notes-{{ t.id }}"
-    hx-swap="outerHTML"
-  >
-    Edit notes
-  </button>
+{# templates/_task_notes_display.html #}
+<div class="notes-display whitespace-pre-wrap text-sm">
+  {% if t.notes %}{{ t.notes|trim }}{% else %}<span class="text-slate-400 italic">Click to add notes</span>{% endif %}
 </div>

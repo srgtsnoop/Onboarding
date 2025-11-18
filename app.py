@@ -170,18 +170,6 @@ def add_task(week_id: int):
 # Routes: edit NOTES (inline)
 # Returns the refreshed row partial by default
 # -----------------------------------------------------------------------------
-
-
-@app.get("/tasks/<int:task_id>/notes", endpoint="view_notes")
-def view_notes(task_id):
-    t = Task.query.get_or_404(task_id)
-    # return just the display fragment for HTMX
-    if request.headers.get("HX-Request"):
-        return render_template("_task_row.html", t=t)  # if coming from table
-    # non-HTMX fallback: go back to the task’s week page (adjust as needed)
-    return redirect(url_for("week_detail", week_id=t.week_id))
-
-
 @app.get("/tasks/<int:task_id>/notes/edit", endpoint="edit_notes_form")
 def edit_notes_form(task_id):
     t = Task.query.get_or_404(task_id)
@@ -191,14 +179,19 @@ def edit_notes_form(task_id):
 @app.post("/tasks/<int:task_id>/notes", endpoint="update_notes")
 def update_notes(task_id):
     t = Task.query.get_or_404(task_id)
-    # pull from form, normalize
-    new_notes = (request.form.get("notes") or "").strip()
-    t.notes = (request.form.get("notes") or "").strip()
+    raw_notes = request.form.get("notes") or ""
+    t.notes = raw_notes.strip()  # 👈 trims leading/trailing whitespace
     db.session.commit()
+
     if request.headers.get("HX-Request"):
-        # send the display fragment back into the same target
-        return render_template("_task_row.html", t=t)  # or "_task_card.html"
+        return render_template("_task_notes_display.html", t=t)
     return redirect(url_for("week_detail", week_id=t.week_id))
+
+
+@app.get("/tasks/<int:task_id>/notes/cancel", endpoint="cancel_notes_edit")
+def cancel_notes_edit(task_id):
+    t = Task.query.get_or_404(task_id)
+    return render_template("_task_notes_display.html", t=t)
 
 
 # -----------------------------------------------------------------------------
@@ -262,39 +255,50 @@ def update_due_date(task_id: int):
 
 
 # -----------------------------------------------------------------------------
-# Routes: STATUS inline edit using click → form → Save/Cancel (HTMX)
+# Routes: STATUS inline edit using click → dropdown → auto-save (HTMX)
 # -----------------------------------------------------------------------------
-@app.get("/tasks/<int:task_id>/status/edit")
+@app.get("/tasks/<int:task_id>/status/edit", endpoint="edit_status_form")
 def edit_status_form(task_id: int):
     t = Task.query.get_or_404(task_id)
     return render_template("_task_status_form.html", t=t)
 
 
-@app.get("/tasks/<int:task_id>/status/view")
+@app.get("/tasks/<int:task_id>/status/view", endpoint="view_status")
 def view_status(task_id: int):
     t = Task.query.get_or_404(task_id)
     return render_template("_task_status_display.html", t=t)
 
 
-@app.post("/tasks/<int:task_id>/status")
-def edit_status(task_id: int):
+@app.post("/tasks/<int:task_id>/status", endpoint="update_status")
+def update_status(task_id: int):
     t = Task.query.get_or_404(task_id)
+
+    # Get the label from the form and normalize it
     label = (request.form.get("status") or "").strip()
 
     # Validate against Enum values
     valid_values = [e.value for e in StatusEnum]
     if label not in valid_values:
-        return (
-            render_template("_task_status_form.html", t=t, error="Invalid status"),
-            400,
-        )
+        error = "Invalid status"
+        if request.headers.get("HX-Request"):
+            # Re-render the form with an error for HTMX requests
+            return (
+                render_template("_task_status_form.html", t=t, error=error),
+                400,
+            )
+        # Non-HTMX fallback – just redirect (optional: flash a message)
+        return redirect(url_for("week_detail", week_id=t.week_id))
 
     # Convert string to enum by value and save
     t.status = StatusEnum(label)
     db.session.commit()
 
-    # Return to read-only display after save
-    return render_template("_task_status_display.html", t=t)
+    # If this was an HTMX request, return the display fragment
+    if request.headers.get("HX-Request"):
+        return render_template("_task_status_display.html", t=t)
+
+    # Non-HTMX fallback: go back to the week page
+    return redirect(url_for("week_detail", week_id=t.week_id))
 
 
 # -----------------------------------------------------------------------------

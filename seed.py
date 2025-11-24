@@ -99,8 +99,8 @@ with app.app_context():
                 " Test systems\n"
                 " Hiring examples"
             ),
-            status=StatusEnum.IN_PROGRESS,
-            notes="",
+            status=StatusEnum.NOT_STARTED,
+            notes="Jennifer will reach out to schedule.",
             sort_order=1,
         )
     )
@@ -117,7 +117,7 @@ with app.app_context():
                 "for the week, don’t sweat it. Just keep plugging away in the "
                 "order of your learning plan."
             ),
-            status=StatusEnum.COMPLETE,
+            status=StatusEnum.NOT_STARTED,
             notes=(
                 "Select your session for the following in-person classes:\n"
                 " Who is Musco\n"

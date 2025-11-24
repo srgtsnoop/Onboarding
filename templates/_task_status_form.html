@@ -11,13 +11,15 @@
     hx-trigger="change"
   >
     {% set options = ['Not Started', 'In Progress', 'Complete'] %}
-    {% set current = (t.status.value if t.status else 'Not Started') %}
+    {% set current = t.status.value if t.status else 'Not Started' %}
+    
     {% for s in options %}
       <option value="{{ s }}" {% if current == s %}selected{% endif %}>
         {{ s }}
       </option>
     {% endfor %}
   </select>
+
 
   {# Optional: show an error if validation failed #}
   {% if error %}

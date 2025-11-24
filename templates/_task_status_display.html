@@ -1,5 +1,5 @@
 {# templates/_task_status_display.html #}
-{% set s = (t.status.value if t.status else 'Not Started') %}
+{% set s = (t.status or 'Not Started') %}
 
 <div
   class="inline-block cursor-pointer"

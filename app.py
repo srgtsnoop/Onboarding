@@ -154,7 +154,7 @@ def add_task(week_id: int):
         title=title,
         topic=topic,
         notes=notes,
-        status="Not Started",  # default status
+        # status="Not Started",  # default status
         sort_order=(Task.query.filter_by(week_id=w.id).count() + 1),
     )
     # only set due_date if your model has that column
@@ -299,6 +299,13 @@ def update_status(task_id: int):
 
     # Non-HTMX fallback: go back to the week page
     return redirect(url_for("week_detail", week_id=t.week_id))
+
+
+@app.get("/tasks/<int:task_id>/status/cancel")
+def cancel_status_edit(task_id):
+    t = Task.query.get_or_404(task_id)
+    # Just go back to the normal display view for this cell
+    return render_template("_task_status_display.html", t=t)
 
 
 # -----------------------------------------------------------------------------

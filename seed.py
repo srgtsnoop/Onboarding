@@ -81,7 +81,6 @@ with app.app_context():
     #        week_id=w1.id,
     #        goal="Job shadow Joel (his desk)",
     #        topic=("Communication/outage alarms"),
-    #        status=StatusEnum.NOT_STARTED,
     #        notes="Schedule meetings and catchups, if possible.",
     #        sort_order=0,
     #   )
@@ -99,8 +98,8 @@ with app.app_context():
                 " Test systems\n"
                 " Hiring examples"
             ),
-            status=StatusEnum.NOT_STARTED,
             notes="Jennifer will reach out to schedule.",
+            status="",
             sort_order=1,
         )
     )
@@ -117,7 +116,6 @@ with app.app_context():
                 "for the week, don’t sweat it. Just keep plugging away in the "
                 "order of your learning plan."
             ),
-            status=StatusEnum.NOT_STARTED,
             notes=(
                 "Select your session for the following in-person classes:\n"
                 " Who is Musco\n"
@@ -125,6 +123,7 @@ with app.app_context():
                 " Respectful Workplace for New Hires\n"
                 " Intellectual Property Training/Excellence"
             ),
+            status="",
             sort_order=2,
         )
     )

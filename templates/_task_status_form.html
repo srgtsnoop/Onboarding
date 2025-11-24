@@ -11,7 +11,7 @@
     hx-trigger="change"
   >
     {% set options = ['Not Started', 'In Progress', 'Complete'] %}
-    {% set current = t.status.value if t.status else 'Not Started' %}
+    {% set current = t.status or 'Not Started' %}
     
     {% for s in options %}
       <option value="{{ s }}" {% if current == s %}selected{% endif %}>
@@ -20,12 +20,37 @@
     {% endfor %}
   </select>
 
+  <div class="mt-2 flex gap-2">
+  <!-- SAVE: send the selected status to the server -->
+  <button
+    type="button"
+    class="btn btn-primary btn-sm"
+    onclick="event.stopPropagation();"
+    hx-post="{{ url_for('update_status', task_id=t.id) }}"
+    hx-target="closest td"
+    hx-swap="innerHTML"
+    hx-include="closest td"
+  >
+    Save
+  </button>
 
-  {# Optional: show an error if validation failed #}
-  {% if error %}
-    <div class="text-red-500 text-xs mt-1">
-      {{ error }}
-    </div>
-  {% endif %}
+  <!-- CANCEL: just re-render the display version of status -->
+  <button
+    type="button"
+    class="btn btn-sm"
+    onclick="event.stopPropagation();"
+    hx-get="{{ url_for('cancel_status_edit', task_id=t.id) }}"
+    hx-target="closest td"
+    hx-swap="innerHTML"
+  >
+    Cancel
+  </button>
+</div>
 </form>
-{# templates/_task_status_form.html #}
+
+{# Optional: show an error if validation failed #}
+{% if error %}
+  <div class="text-red-500 text-xs mt-1">
+    {{ error }}
+  </div>
+{% endif %}

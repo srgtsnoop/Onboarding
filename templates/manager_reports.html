@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <p class="text-sm text-slate-500">{{ manager.full_name }} • {{ manager.role|capitalize }}</p>
+    <h1 class="text-2xl font-bold">Direct Reports</h1>
+  </div>
+  <a href="{{ url_for('weeks', as_user=manager.email) }}" class="text-sm text-slate-600 underline">View my plan</a>
+</div>
+
+{% if not reports %}
+  <div class="bg-white border rounded-xl p-6 shadow-sm">
+    <p class="text-slate-600">No direct reports yet.</p>
+  </div>
+{% else %}
+  <div class="grid md:grid-cols-2 gap-4">
+    {% for person in reports %}
+      <div class="bg-white border rounded-2xl shadow-sm p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <h2 class="text-lg font-semibold">{{ person.full_name }}</h2>
+            <p class="text-sm text-slate-500">{{ person.email }}</p>
+          </div>
+          {% if person.onboarding_plan %}
+            <span class="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-1 rounded-full">{{ person.onboarding_plan.name }}</span>
+          {% else %}
+            <span class="text-xs text-slate-500">No plan</span>
+          {% endif %}
+        </div>
+
+        {% if person.onboarding_plan %}
+          <ul class="space-y-2 text-sm">
+            {% for w in person.onboarding_plan.weeks %}
+              <li class="flex items-center justify-between">
+                <div>
+                  <p class="font-medium">{{ w.title }}</p>
+                  {% if w.start_date %}
+                    <p class="text-slate-500">Starts {{ w.start_date.strftime('%b %d, %Y') }}</p>
+                  {% endif %}
+                </div>
+                <span class="text-slate-500">{{ w.tasks|length }} tasks</span>
+              </li>
+            {% endfor %}
+          </ul>
+          <div class="mt-3 text-right">
+            <a href="{{ url_for('weeks', as_user=person.email) }}" class="text-sm text-indigo-600 hover:underline">Open plan →</a>
+          </div>
+        {% else %}
+          <p class="text-sm text-slate-600">No onboarding plan assigned.</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

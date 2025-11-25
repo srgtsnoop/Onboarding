@@ -10,14 +10,12 @@ from dateutil import parser as dtparser
 import time
 
 from flask import Flask, render_template, request, redirect, url_for, abort
-from Onboarding.models import Week, Task, StatusEnum
+from Onboarding.models import Week, Task, StatusEnum, User, RoleEnum, OnboardingPlan
 
 # 1) Single shared db instance
 from Onboarding.extensions import db
 from Onboarding.policy import (
     ensure_week_access,
-    filter_weeks_for_principal,
-    get_current_principal,
 )
 
 
@@ -106,6 +104,99 @@ def parse_due_date(text: str | None) -> date | None:
         raise ValueError(f"Could not parse due date: {s}") from exc
 
 
+# -----------------------------------------------------------------------------
+# Helpers: user resolution and authorization
+# -----------------------------------------------------------------------------
+def current_user() -> User:
+    """Resolve the acting user from a header or query param.
+
+    Falls back to the first user in the database so the UI continues to work in
+    development without explicit context. Raises 404 if no users exist.
+    """
+
+    email = request.headers.get("X-User-Email") or request.args.get("as_user")
+    query = User.query.options(selectinload(User.onboarding_plan))
+
+    if email:
+        user = query.filter_by(email=email).first()
+        if not user:
+            abort(404, description="User not found")
+        return user
+
+    user = query.order_by(User.id.asc()).first()
+    if not user:
+        abort(404, description="No users available")
+    return user
+
+
+def require_role(user: User, allowed_roles: set[str]):
+    if user.role not in allowed_roles:
+        abort(403)
+
+
+def weeks_for_plan(plan_id: int | None):
+    if plan_id is None:
+        return []
+    return (
+        Week.query.filter_by(onboarding_plan_id=plan_id)
+        .options(selectinload(Week.tasks))
+        .order_by(Week.start_date.asc().nullsfirst(), Week.id.asc())
+        .all()
+    )
+
+
+def ensure_week_for_user(week_id: int, user: User) -> Week:
+    week = (
+        Week.query.filter_by(id=week_id, onboarding_plan_id=user.onboarding_plan_id)
+        .options(selectinload(Week.tasks))
+        .first()
+    )
+    if not week:
+        abort(404)
+    return week
+
+
+def ensure_task_for_user(task_id: int, user: User) -> Task:
+    task = Task.query.options(selectinload(Task.week)).get(task_id)
+    if not task or task.week.onboarding_plan_id != user.onboarding_plan_id:
+        abort(404)
+    return task
+
+
+def serialize_week(week: Week):
+    return {
+        "id": week.id,
+        "title": week.title,
+        "start_date": week.start_date.isoformat() if week.start_date else None,
+        "end_date": week.end_date.isoformat() if week.end_date else None,
+        "tasks": [t.id for t in week.tasks],
+    }
+
+
+def serialize_user_with_plan(user: User):
+    plan = user.onboarding_plan
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role,
+        "plan": (
+            None
+            if not plan
+            else {
+                "id": plan.id,
+                "name": plan.name,
+                "weeks": [serialize_week(w) for w in weeks_for_plan(plan.id)],
+            }
+        ),
+    }
+
+
+# -----------------------------------------------------------------------------
+# Context processors
+# -----------------------------------------------------------------------------
+
+
 @app.context_processor
 def inject_build_ts():
     return {"build_ts": int(time.time())}
@@ -121,24 +212,151 @@ def index():
 
 @app.get("/weeks")
 def weeks():
-    principal = get_current_principal()
-    all_weeks = (
-        filter_weeks_for_principal(principal).order_by(Week.start_date.asc()).all()
-    )
-    return render_template("weeks.html", weeks=all_weeks)
+    user = current_user()
+    plan_weeks = weeks_for_plan(user.onboarding_plan_id)
+    return render_template("weeks.html", weeks=plan_weeks, user=user)
 
 
 @app.get("/weeks/<int:week_id>")
 def week_detail(week_id: int):
-    principal = get_current_principal()
-    w = Week.query.get_or_404(week_id)
-    ensure_week_access(principal, w)
+    user = current_user()
+    w = ensure_week_for_user(week_id, user)
     tasks = (
         Task.query.filter_by(week_id=w.id)
         .order_by(Task.sort_order.asc(), Task.id.asc())
         .all()
     )
-    return render_template("week_detail.html", w=w, tasks=tasks)
+    return render_template("week_detail.html", w=w, tasks=tasks, user=user)
+
+
+# -----------------------------------------------------------------------------
+# Role-aware endpoints
+# -----------------------------------------------------------------------------
+@app.get("/api/my-plan")
+def api_my_plan():
+    user = current_user()
+    serialized = serialize_user_with_plan(user)
+    return {
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+        },
+        "plan": serialized["plan"],
+    }
+
+
+@app.get("/manager/reports")
+def manager_reports():
+    manager = current_user()
+    require_role(manager, {RoleEnum.MANAGER.value, RoleEnum.ADMIN.value})
+
+    reports = (
+        User.query.filter(User.manager_id == manager.id)
+        .options(
+            selectinload(User.onboarding_plan)
+            .selectinload(OnboardingPlan.weeks)
+            .selectinload(Week.tasks),
+        )
+        .order_by(User.full_name.asc())
+        .all()
+    )
+
+    return render_template(
+        "manager_reports.html",
+        manager=manager,
+        reports=reports,
+    )
+
+
+@app.get("/api/manager/reports")
+def api_manager_reports():
+    manager = current_user()
+    require_role(manager, {RoleEnum.MANAGER.value, RoleEnum.ADMIN.value})
+
+    reports = (
+        User.query.filter(User.manager_id == manager.id)
+        .options(selectinload(User.onboarding_plan).selectinload(OnboardingPlan.weeks))
+        .order_by(User.id.asc())
+        .all()
+    )
+    return {
+        "manager": {
+            "id": manager.id,
+            "email": manager.email,
+            "full_name": manager.full_name,
+        },
+        "direct_reports": [serialize_user_with_plan(u) for u in reports],
+    }
+
+
+@app.get("/admin/overview")
+def admin_overview():
+    admin = current_user()
+    require_role(admin, {RoleEnum.ADMIN.value})
+
+    users = (
+        User.query.options(
+            selectinload(User.onboarding_plan).selectinload(OnboardingPlan.weeks),
+            selectinload(User.manager),
+        )
+        .order_by(User.full_name.asc())
+        .all()
+    )
+
+    plans = (
+        OnboardingPlan.query.options(selectinload(OnboardingPlan.weeks))
+        .order_by(OnboardingPlan.name.asc())
+        .all()
+    )
+
+    return render_template(
+        "admin_overview.html",
+        admin=admin,
+        users=users,
+        plans=plans,
+    )
+
+
+@app.get("/api/admin/overview")
+def api_admin_overview():
+    admin = current_user()
+    require_role(admin, {RoleEnum.ADMIN.value})
+
+    users = (
+        User.query.options(
+            selectinload(User.onboarding_plan).selectinload(OnboardingPlan.weeks),
+            selectinload(User.manager),
+        )
+        .order_by(User.id.asc())
+        .all()
+    )
+
+    plans = (
+        OnboardingPlan.query.options(selectinload(OnboardingPlan.weeks))
+        .order_by(OnboardingPlan.id.asc())
+        .all()
+    )
+
+    return {
+        "admin": {
+            "id": admin.id,
+            "email": admin.email,
+            "full_name": admin.full_name,
+        },
+        "users": [
+            serialize_user_with_plan(u) | {"manager_id": u.manager_id} for u in users
+        ],
+        "plans": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "week_ids": [w.id for w in p.weeks],
+            }
+            for p in plans
+        ],
+    }
 
 
 # -----------------------------------------------------------------------------
@@ -146,9 +364,9 @@ def week_detail(week_id: int):
 # -----------------------------------------------------------------------------
 @app.post("/weeks/<int:week_id>/tasks")
 def add_task(week_id: int):
-    principal = get_current_principal()
-    w = Week.query.get_or_404(week_id)
-    ensure_week_access(principal, w)
+    user = current_user()
+    w = ensure_week_for_user(week_id, user)
+    ensure_week_access(w)
     title = request.form.get("goal", "").strip()
     topic = request.form.get("topic", "").strip()
     notes = request.form.get("notes", "").strip()
@@ -176,7 +394,7 @@ def add_task(week_id: int):
 
     db.session.add(t)
     db.session.commit()
-    return redirect(url_for("week_detail", week_id=w.id))
+    return redirect(url_for("week_detail", week_id=w.id, as_user=user.email))
 
 
 # -----------------------------------------------------------------------------
@@ -185,31 +403,31 @@ def add_task(week_id: int):
 # -----------------------------------------------------------------------------
 @app.get("/tasks/<int:task_id>/notes/edit", endpoint="edit_notes_form")
 def edit_notes_form(task_id):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
     return render_template("_task_notes_form.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/notes", endpoint="update_notes")
 def update_notes(task_id):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
     raw_notes = request.form.get("notes") or ""
     t.notes = raw_notes.strip()  # 👈 trims leading/trailing whitespace
     db.session.commit()
 
     if request.headers.get("HX-Request"):
         return render_template("_task_notes_display.html", t=t)
-    return redirect(url_for("week_detail", week_id=t.week_id))
+    return redirect(url_for("week_detail", week_id=t.week_id, as_user=user.email))
 
 
 @app.get("/tasks/<int:task_id>/notes/cancel", endpoint="cancel_notes_edit")
 def cancel_notes_edit(task_id):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
     return render_template("_task_notes_display.html", t=t)
 
 
@@ -233,31 +451,33 @@ def _parse_due_date(s: str):
 # ---------- Due date inline edit (HTMX) ----------
 @app.get("/tasks/<int:task_id>/due-date/form", endpoint="edit_date_form")
 def edit_date_form(task_id: int):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
     return render_template("_task_date_form.html", t=t)
 
 
 @app.get("/tasks/<int:task_id>/due-date/display", endpoint="date_display")
 def date_display(task_id: int):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
     return render_template("_task_date_display.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/due-date", endpoint="update_due_date")
 def update_due_date(task_id: int):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
 
     # Clear?
     if request.form.get("clear") == "1":
         t.due_date = None
         db.session.commit()
-        return render_template("_task_date_display.html", t=t)
+        if request.headers.get("HX-Request"):
+            return render_template("_task_date_display.html", t=t)
+        return redirect(url_for("week_detail", week_id=t.week_id, as_user=user.email))
 
     # Try both inputs (native date + freeform text)
     raw = (
@@ -284,25 +504,25 @@ def update_due_date(task_id: int):
 # -----------------------------------------------------------------------------
 @app.get("/tasks/<int:task_id>/status/edit", endpoint="edit_status_form")
 def edit_status_form(task_id: int):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
     return render_template("_task_status_form.html", t=t)
 
 
 @app.get("/tasks/<int:task_id>/status/view", endpoint="view_status")
 def view_status(task_id: int):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
     return render_template("_task_status_display.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/status", endpoint="update_status")
 def update_status(task_id: int):
-    principal = get_current_principal()
-    t = Task.query.get_or_404(task_id)
-    ensure_week_access(principal, t.week)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
+    ensure_week_access(t.week)
 
     # Get the label from the form and normalize it
     label = (request.form.get("status") or "").strip()
@@ -318,7 +538,7 @@ def update_status(task_id: int):
                 400,
             )
         # Non-HTMX fallback – just redirect (optional: flash a message)
-        return redirect(url_for("week_detail", week_id=t.week_id))
+        return redirect(url_for("week_detail", week_id=t.week_id, as_user=user.email))
 
     # Convert string to enum by value and save
     t.status = StatusEnum(label)
@@ -329,12 +549,13 @@ def update_status(task_id: int):
         return render_template("_task_status_display.html", t=t)
 
     # Non-HTMX fallback: go back to the week page
-    return redirect(url_for("week_detail", week_id=t.week_id))
+    return redirect(url_for("week_detail", week_id=t.week_id, as_user=user.email))
 
 
 @app.get("/tasks/<int:task_id>/status/cancel")
 def cancel_status_edit(task_id):
-    t = Task.query.get_or_404(task_id)
+    user = current_user()
+    t = ensure_task_for_user(task_id, user)
     # Just go back to the normal display view for this cell
     return render_template("_task_status_display.html", t=t)
 

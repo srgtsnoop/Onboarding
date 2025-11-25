@@ -30,7 +30,7 @@ with app.app_context():
     print("Tables at seed:", inspect(db.engine).get_table_names())
 
     # ---- Onboarding plan ----
-    plan = OnboardingPlan(name="Engineering Onboarding Plan")
+    plan = OnboardingPlan(name="Warranty Representative Onboarding Plan")
     db.session.add(plan)
     db.session.flush()
 

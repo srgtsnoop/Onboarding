@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <p class="text-sm text-slate-500">{{ admin.full_name }} • Admin</p>
+    <h1 class="text-2xl font-bold">Organization Overview</h1>
+  </div>
+</div>
+
+<div class="grid md:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white border rounded-xl p-4 shadow-sm">
+    <p class="text-sm text-slate-500">Total users</p>
+    <p class="text-2xl font-semibold">{{ users|length }}</p>
+  </div>
+  <div class="bg-white border rounded-xl p-4 shadow-sm">
+    <p class="text-sm text-slate-500">Onboarding plans</p>
+    <p class="text-2xl font-semibold">{{ plans|length }}</p>
+  </div>
+  <div class="bg-white border rounded-xl p-4 shadow-sm">
+    <p class="text-sm text-slate-500">Weeks across plans</p>
+    <p class="text-2xl font-semibold">{{ plans|map(attribute='weeks')|map('length')|sum }}</p>
+  </div>
+</div>
+
+<div class="bg-white border rounded-xl shadow-sm">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Role</th>
+        <th>Manager</th>
+        <th>Plan</th>
+        <th>Weeks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+        <tr>
+          <td>
+            <div class="font-semibold">{{ user.full_name }}</div>
+            <div class="text-sm text-slate-500">{{ user.email }}</div>
+          </td>
+          <td class="align-top">{{ user.role|capitalize }}</td>
+          <td class="align-top">{{ user.manager.full_name if user.manager else '—' }}</td>
+          <td class="align-top">{{ user.onboarding_plan.name if user.onboarding_plan else '—' }}</td>
+          <td class="align-top">{{ user.onboarding_plan.weeks|length if user.onboarding_plan else 0 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

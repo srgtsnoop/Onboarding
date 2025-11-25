@@ -3,8 +3,15 @@ from datetime import date, timedelta
 
 from app import app  # ✅ import the Flask app from app.py
 from Onboarding.extensions import db  # ✅ shared SQLAlchemy() instance
-from Onboarding.models import Week, Task, StatusEnum
 from sqlalchemy.inspection import inspect as sa_inspect
+from Onboarding.models import (
+    Week,
+    Task,
+    StatusEnum,
+    User,
+    RoleEnum,
+    OnboardingPlan,
+)
 
 
 def model_columns(model):
@@ -22,12 +29,19 @@ with app.app_context():
 
     print("Tables at seed:", inspect(db.engine).get_table_names())
 
+    # ---- Onboarding plan ----
+    plan = OnboardingPlan(name="Engineering Onboarding Plan")
+    db.session.add(plan)
+    db.session.flush()
+
     # ---- Weeks ----
     week_cols = model_columns(Week)
     print("Week columns:", sorted(week_cols))
 
     def week_kwargs(i: int, start: date, end: date):
         kw = {}
+        if "onboarding_plan_id" in week_cols:
+            kw["onboarding_plan_id"] = plan.id
         if "start_date" in week_cols:
             kw["start_date"] = start
         if "end_date" in week_cols:
@@ -130,6 +144,43 @@ with app.app_context():
 
     # db.session.add_all([t1, t2, t3])
     db.session.add_all([t2, t3])
+
+    # ---- Users ----
+    user_cols = model_columns(User)
+    print("User columns:", sorted(user_cols))
+
+    def user_kwargs(full_name: str, email: str, role: RoleEnum, manager=None):
+        kw = {
+            "full_name": full_name,
+            "email": email,
+            "role": role.value if hasattr(role, "value") else role,
+        }
+        if "onboarding_plan_id" in user_cols:
+            kw["onboarding_plan_id"] = plan.id
+        if "manager_id" in user_cols and manager is not None:
+            kw["manager_id"] = manager.id
+        return kw
+
+    admin = User(**user_kwargs("Avery Admin", "admin@example.com", RoleEnum.ADMIN))
+    manager = User(
+        **user_kwargs("Morgan Manager", "manager@example.com", RoleEnum.MANAGER)
+    )
+
+    db.session.add_all([admin, manager])
+    db.session.flush()
+
+    user = User(
+        **user_kwargs("Uma User", "user@example.com", RoleEnum.USER, manager=manager)
+    )
+
+    db.session.add(user)
+
     db.session.commit()
 
-    print(f"✅ Seed complete! Weeks: {Week.query.count()}, Tasks: {Task.query.count()}")
+    print(
+        "✅ Seed complete! Weeks: {weeks}, Tasks: {tasks}, Users: {users}".format(
+            weeks=Week.query.count(),
+            tasks=Task.query.count(),
+            users=User.query.count(),
+        )
+    )

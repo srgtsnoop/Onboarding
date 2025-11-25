@@ -14,6 +14,36 @@ class StatusEnum(str, Enum):
     COMPLETE = "Complete"
 
 
+class RoleEnum(str, Enum):
+    USER = "user"
+    MANAGER = "manager"
+    ADMIN = "admin"
+
+
+# -------------------------------------------------------------------
+# MODEL: OnboardingPlan (collection of onboarding weeks)
+# -------------------------------------------------------------------
+class OnboardingPlan(db.Model):
+    __tablename__ = "onboarding_plans"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False, default="Onboarding Plan")
+    description = db.Column(db.Text, nullable=True)
+
+    weeks = db.relationship(
+        "Week",
+        back_populates="onboarding_plan",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+    users = db.relationship(
+        "User",
+        back_populates="onboarding_plan",
+        lazy="selectin",
+    )
+
+
 # -------------------------------------------------------------------
 # MODEL: Week (a collection of tasks)
 # -------------------------------------------------------------------
@@ -23,6 +53,11 @@ class Week(db.Model):
     title = db.Column(db.String(255), nullable=False, default="Week")
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
+
+    onboarding_plan_id = db.Column(
+        db.Integer, db.ForeignKey("onboarding_plans.id"), nullable=True
+    )
+    onboarding_plan = db.relationship("OnboardingPlan", back_populates="weeks")
 
     # ✅ Use back_populates (no backref)
     tasks = db.relationship(
@@ -71,3 +106,39 @@ class Task(db.Model):
 
     def is_complete(self):
         return self.status == StatusEnum.COMPLETE.value
+
+
+# -------------------------------------------------------------------
+# MODEL: User
+# -------------------------------------------------------------------
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    full_name = db.Column(db.String(255), nullable=False)
+
+    role = db.Column(db.String(32), nullable=False, default=RoleEnum.USER.value)
+
+    onboarding_plan_id = db.Column(
+        db.Integer, db.ForeignKey("onboarding_plans.id"), nullable=True
+    )
+    onboarding_plan = db.relationship("OnboardingPlan", back_populates="users")
+
+    manager_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    manager = db.relationship(
+        "User",
+        remote_side="User.id",
+        back_populates="direct_reports",
+        lazy="joined",
+    )
+
+    direct_reports = db.relationship(
+        "User",
+        back_populates="manager",
+        lazy="selectin",
+        cascade="all",
+    )
+
+    def __repr__(self):
+        return f"<User {self.full_name} ({self.role})>"

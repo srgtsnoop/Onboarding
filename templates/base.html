@@ -17,7 +17,27 @@
   <nav class="bg-white border-b sticky top-0 z-10">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4">
       <a href="/weeks" class="text-xl font-semibold text-slate-800">Onboarding</a>
-            <div class="ml-auto flex items-center gap-4 text-sm text-slate-600">
+      {% if switchable_users %}
+      <form method="get" action="{{ request.path }}" class="flex items-center gap-2 text-sm text-slate-700">
+        <label for="user-switch" class="font-medium">View as</label>
+        <select
+          id="user-switch"
+          name="as_user"
+          class="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 shadow-sm"
+          onchange="this.form.submit()"
+        >
+          {% for switch_user in switchable_users %}
+          <option value="{{ switch_user.email }}" {% if nav_current_user and switch_user.id == nav_current_user.id %}selected{% endif %}>
+            {{ switch_user.full_name }} ({{ switch_user.role | capitalize }})
+          </option>
+          {% endfor %}
+        </select>
+        {% for key, value in request.args.items() if key != 'as_user' %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}" />
+        {% endfor %}
+      </form>
+      {% endif %}
+      <div class="ml-auto flex items-center gap-4 text-sm text-slate-600">
         <a href="/manager/reports" class="hover:text-slate-900">Manager</a>
         <a href="/admin/overview" class="hover:text-slate-900">Admin</a>
       </div>

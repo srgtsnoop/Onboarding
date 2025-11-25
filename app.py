@@ -15,7 +15,9 @@ from Onboarding.models import Week, Task, StatusEnum, User, RoleEnum, Onboarding
 # 1) Single shared db instance
 from Onboarding.extensions import db
 from Onboarding.policy import (
+    Principal,
     ensure_week_access,
+    get_current_principal,
 )
 
 
@@ -129,6 +131,15 @@ def current_user() -> User:
     return user
 
 
+def resolve_principal(user: User) -> Principal:
+    """Prefer an explicit header principal, otherwise derive from ``user``."""
+
+    if "X-User-Role" in request.headers or "X-User-Id" in request.headers:
+        return get_current_principal()
+
+    return Principal(user_id=user.id, role=user.role)
+
+
 def require_role(user: User, allowed_roles: set[str]):
     if user.role not in allowed_roles:
         abort(403)
@@ -200,6 +211,21 @@ def serialize_user_with_plan(user: User):
 @app.context_processor
 def inject_build_ts():
     return {"build_ts": int(time.time())}
+
+
+@app.context_processor
+def inject_user_switcher():
+    users = User.query.order_by(User.role.asc(), User.full_name.asc()).all()
+    active_user = None
+    try:
+        active_user = current_user()
+    except Exception:
+        active_user = None
+
+    return {
+        "switchable_users": users,
+        "nav_current_user": active_user,
+    }
 
 
 # -----------------------------------------------------------------------------
@@ -365,8 +391,9 @@ def api_admin_overview():
 @app.post("/weeks/<int:week_id>/tasks")
 def add_task(week_id: int):
     user = current_user()
+    principal = resolve_principal(user)
     w = ensure_week_for_user(week_id, user)
-    ensure_week_access(w)
+    ensure_week_access(principal, w)
     title = request.form.get("goal", "").strip()
     topic = request.form.get("topic", "").strip()
     notes = request.form.get("notes", "").strip()
@@ -404,16 +431,18 @@ def add_task(week_id: int):
 @app.get("/tasks/<int:task_id>/notes/edit", endpoint="edit_notes_form")
 def edit_notes_form(task_id):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
     return render_template("_task_notes_form.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/notes", endpoint="update_notes")
 def update_notes(task_id):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
     raw_notes = request.form.get("notes") or ""
     t.notes = raw_notes.strip()  # 👈 trims leading/trailing whitespace
     db.session.commit()
@@ -426,8 +455,9 @@ def update_notes(task_id):
 @app.get("/tasks/<int:task_id>/notes/cancel", endpoint="cancel_notes_edit")
 def cancel_notes_edit(task_id):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
     return render_template("_task_notes_display.html", t=t)
 
 
@@ -452,24 +482,27 @@ def _parse_due_date(s: str):
 @app.get("/tasks/<int:task_id>/due-date/form", endpoint="edit_date_form")
 def edit_date_form(task_id: int):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
     return render_template("_task_date_form.html", t=t)
 
 
 @app.get("/tasks/<int:task_id>/due-date/display", endpoint="date_display")
 def date_display(task_id: int):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
     return render_template("_task_date_display.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/due-date", endpoint="update_due_date")
 def update_due_date(task_id: int):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
 
     # Clear?
     if request.form.get("clear") == "1":
@@ -505,24 +538,27 @@ def update_due_date(task_id: int):
 @app.get("/tasks/<int:task_id>/status/edit", endpoint="edit_status_form")
 def edit_status_form(task_id: int):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
     return render_template("_task_status_form.html", t=t)
 
 
 @app.get("/tasks/<int:task_id>/status/view", endpoint="view_status")
 def view_status(task_id: int):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
     return render_template("_task_status_display.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/status", endpoint="update_status")
 def update_status(task_id: int):
     user = current_user()
+    principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
-    ensure_week_access(t.week)
+    ensure_week_access(principal, t.week)
 
     # Get the label from the form and normalize it
     label = (request.form.get("status") or "").strip()

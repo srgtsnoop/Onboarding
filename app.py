@@ -14,6 +14,12 @@ from Onboarding.models import Week, Task, StatusEnum
 
 # 1) Single shared db instance
 from Onboarding.extensions import db
+from Onboarding.policy import (
+    ensure_week_access,
+    filter_weeks_for_principal,
+    get_current_principal,
+)
+
 
 # 2) Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -115,13 +121,18 @@ def index():
 
 @app.get("/weeks")
 def weeks():
-    all_weeks = Week.query.order_by(Week.start_date.asc()).all()
+    principal = get_current_principal()
+    all_weeks = (
+        filter_weeks_for_principal(principal).order_by(Week.start_date.asc()).all()
+    )
     return render_template("weeks.html", weeks=all_weeks)
 
 
 @app.get("/weeks/<int:week_id>")
 def week_detail(week_id: int):
+    principal = get_current_principal()
     w = Week.query.get_or_404(week_id)
+    ensure_week_access(principal, w)
     tasks = (
         Task.query.filter_by(week_id=w.id)
         .order_by(Task.sort_order.asc(), Task.id.asc())
@@ -135,7 +146,9 @@ def week_detail(week_id: int):
 # -----------------------------------------------------------------------------
 @app.post("/weeks/<int:week_id>/tasks")
 def add_task(week_id: int):
+    principal = get_current_principal()
     w = Week.query.get_or_404(week_id)
+    ensure_week_access(principal, w)
     title = request.form.get("goal", "").strip()
     topic = request.form.get("topic", "").strip()
     notes = request.form.get("notes", "").strip()
@@ -172,13 +185,17 @@ def add_task(week_id: int):
 # -----------------------------------------------------------------------------
 @app.get("/tasks/<int:task_id>/notes/edit", endpoint="edit_notes_form")
 def edit_notes_form(task_id):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
     return render_template("_task_notes_form.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/notes", endpoint="update_notes")
 def update_notes(task_id):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
     raw_notes = request.form.get("notes") or ""
     t.notes = raw_notes.strip()  # 👈 trims leading/trailing whitespace
     db.session.commit()
@@ -190,7 +207,9 @@ def update_notes(task_id):
 
 @app.get("/tasks/<int:task_id>/notes/cancel", endpoint="cancel_notes_edit")
 def cancel_notes_edit(task_id):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
     return render_template("_task_notes_display.html", t=t)
 
 
@@ -214,19 +233,25 @@ def _parse_due_date(s: str):
 # ---------- Due date inline edit (HTMX) ----------
 @app.get("/tasks/<int:task_id>/due-date/form", endpoint="edit_date_form")
 def edit_date_form(task_id: int):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
     return render_template("_task_date_form.html", t=t)
 
 
 @app.get("/tasks/<int:task_id>/due-date/display", endpoint="date_display")
 def date_display(task_id: int):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
     return render_template("_task_date_display.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/due-date", endpoint="update_due_date")
 def update_due_date(task_id: int):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
 
     # Clear?
     if request.form.get("clear") == "1":
@@ -259,19 +284,25 @@ def update_due_date(task_id: int):
 # -----------------------------------------------------------------------------
 @app.get("/tasks/<int:task_id>/status/edit", endpoint="edit_status_form")
 def edit_status_form(task_id: int):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
     return render_template("_task_status_form.html", t=t)
 
 
 @app.get("/tasks/<int:task_id>/status/view", endpoint="view_status")
 def view_status(task_id: int):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
     return render_template("_task_status_display.html", t=t)
 
 
 @app.post("/tasks/<int:task_id>/status", endpoint="update_status")
 def update_status(task_id: int):
+    principal = get_current_principal()
     t = Task.query.get_or_404(task_id)
+    ensure_week_access(principal, t.week)
 
     # Get the label from the form and normalize it
     label = (request.form.get("status") or "").strip()

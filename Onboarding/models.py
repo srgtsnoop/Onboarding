@@ -53,6 +53,8 @@ class Week(db.Model):
     title = db.Column(db.String(255), nullable=False, default="Week")
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
+    owner_user_id = db.Column(db.Integer, nullable=True)
+    manager_user_id = db.Column(db.Integer, nullable=True)
 
     onboarding_plan_id = db.Column(
         db.Integer, db.ForeignKey("onboarding_plans.id"), nullable=True

@@ -2,7 +2,7 @@
 {# Read-only date; click to edit #}
 <div
   class="inline-flex items-center gap-2 cursor-pointer"
-  hx-get="{{ url_for('edit_date_form', task_id=t.id) }}"
+  hx-get="{{ url_for('edit_date_form', task_id=t.id, as_user=user.email) }}"
   hx-target="closest td"
   hx-swap="innerHTML"
   aria-label="Edit due date"

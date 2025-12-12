@@ -1,4 +1,14 @@
 {# templates/_task_notes_display.html #}
-<div class="notes-display whitespace-pre-wrap text-sm">
-  {% if t.notes %}{{ t.notes|trim }}{% else %}<span class="text-slate-400 italic">Click to add notes</span>{% endif %}
+<div
+  class="notes-display whitespace-pre-wrap text-sm cursor-pointer"
+  hx-get="{{ url_for('edit_notes_form', task_id=t.id, as_user=user.email) }}"
+  hx-target="closest td"
+  hx-swap="innerHTML"
+  title="Click to edit notes"
+>
+  {% if t.notes %}
+    {{ t.notes|trim }}
+  {% else %}
+    <span class="text-slate-400 italic">Click to add notes</span>
+  {% endif %}
 </div>

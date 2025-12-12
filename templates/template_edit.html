@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Edit Template – {{ template.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6 space-y-8">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-sm text-slate-500">Template</p>
+      <h1 class="text-2xl font-bold">{{ template.name }}</h1>
+      <p class="mt-1 text-slate-600">
+        {{ template.description or "No description yet." }}
+      </p>
+      <p class="mt-1 text-xs text-slate-400">
+        Status: {{ template.status }} • ID: {{ template.id }}
+      </p>
+    </div>
+    <div class="text-right space-y-2">
+      <a href="{{ url_for('templates_dashboard') }}"
+         class="text-sm text-blue-600 underline">
+        ← Back to Templates
+      </a>
+      {# Publish / Clone buttons can go here later #}
+    </div>
+  </div>
+
+  <!-- Add Section -->
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <h2 class="text-lg font-semibold mb-3">Add Section / Week</h2>
+    <form method="post"
+          action="{{ url_for('add_template_section', template_id=template.id) }}"
+          class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Title</label>
+        <input type="text" name="title"
+               placeholder="Week 1 – Orientation"
+               class="w-full border rounded px-3 py-2" />
+      </div>
+      <div class="md:col-span-1">
+        <label class="block text-sm font-medium mb-1">
+          Offset days from start
+        </label>
+        <input type="number" name="offset_days"
+               placeholder="0"
+               class="w-full border rounded px-3 py-2" />
+        <p class="text-xs text-slate-500 mt-1">
+          e.g. 0 for Week 1, 7 for Week 2, etc.
+        </p>
+      </div>
+      <div class="md:col-span-4">
+        <label class="block text-sm font-medium mb-1">
+          Description (optional)
+        </label>
+        <textarea name="description" rows="2"
+                  class="w-full border rounded px-3 py-2"
+                  placeholder="What is this week or phase about?"></textarea>
+      </div>
+      <div class="md:col-span-1">
+        <button type="submit"
+                class="mt-2 w-full inline-flex justify-center items-center px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold shadow">
+          + Add Section
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Sections & Tasks -->
+  <div class="space-y-6">
+    {% if template.sections %}
+      {% for section in template.sections %}
+        <div class="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
+
+          <!-- Section header -->
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold">
+                {{ loop.index }}. {{ section.title }}
+              </h2>
+              <p class="text-sm text-slate-500">
+                Offset:
+                {{ section.offset_days if section.offset_days is not none else 0 }}
+                days from start
+              </p>
+              {% if section.description %}
+                <p class="mt-1 text-sm text-slate-600">
+                  {{ section.description }}
+                </p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Existing tasks table -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-3 py-2 text-left">Task</th>
+                  <th class="px-3 py-2 text-left">Responsible</th>
+                  <th class="px-3 py-2 text-left">Due rule</th>
+                  <th class="px-3 py-2 text-left">Required</th>
+                  <th class="px-3 py-2 text-left">Category</th>
+                  <th class="px-3 py-2 text-left"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if section.tasks %}
+                  {% for t in section.tasks %}
+                    <tr class="border-t border-slate-200">
+                      <td class="px-3 py-2">{{ t.title }}</td>
+                      <td class="px-3 py-2">
+                        {% if t.responsible_party == "manager" %}
+                          Manager
+                        {% elif t.responsible_party == "other" %}
+                          Other
+                        {% else %}
+                          New Hire
+                        {% endif %}
+                      </td>
+                      <td class="px-3 py-2">
+                        {% if t.due_type == 'days_from_start' %}
+                          {{ t.offset_days or 0 }} days after start
+                        {% elif t.due_type == 'day_within_section' %}
+                          Day {{ t.section_day or 1 }} of section
+                        {% else %}
+                          –
+                        {% endif %}
+                      </td>
+                      <td class="px-3 py-2">
+                        {% if t.is_required %}Yes{% else %}No{% endif %}
+                      </td>
+                      <td class="px-3 py-2">
+                        {{ t.category or '-' }}
+                      </td>
+                      <td class="px-3 py-2">
+                        <a href="{{ url_for('edit_template_task',
+                                            template_id=template.id,
+                                            section_id=section.id,
+                                            task_id=t.id) }}"
+                           class="text-blue-600 underline text-xs">
+                          Edit
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="6"
+                        class="px-3 py-2 text-slate-400 italic">
+                      No tasks yet in this section.
+                    </td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Add Task form -->
+          <div class="border-t border-slate-200 pt-4">
+            <h3 class="text-sm font-semibold mb-2">
+              Add Task to {{ section.title }}
+            </h3>
+            <form method="post"
+                  action="{{ url_for('add_template_task',
+                                     template_id=template.id,
+                                     section_id=section.id) }}"
+                  class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">Title</label>
+                <input type="text" name="title"
+                       placeholder="Meet with Manager"
+                       class="w-full border rounded px-3 py-2" />
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">
+                  Description
+                </label>
+                <input type="text" name="description"
+                       placeholder="Short description (optional)"
+                       class="w-full border rounded px-3 py-2" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-1">
+                  Responsible
+                </label>
+                <select name="responsible_party"
+                        class="w-full border rounded px-3 py-2">
+                  <option value="new_hire">New Hire</option>
+                  <option value="manager">Manager</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-1">
+                  Category
+                </label>
+                <input type="text" name="category"
+                       placeholder="e.g. Compliance"
+                       class="w-full border rounded px-3 py-2" />
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium mb-1">
+                  Due Type
+                </label>
+                <select name="due_type"
+                        class="w-full border rounded px-3 py-2">
+                  <option value="days_from_start">Days after start</option>
+                  <option value="day_within_section">Day within section</option>
+                </select>
+                <p class="text-xs text-slate-500 mt-1">
+                  Use the fields below depending on type.
+                </p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-1">
+                  Offset days
+                </label>
+                <input type="number" name="offset_days"
+                       placeholder="e.g. 3"
+                       class="w-full border rounded px-3 py-2" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-1">
+                  Section day
+                </label>
+                <input type="number" name="section_day"
+                       placeholder="e.g. 2"
+                       class="w-full border rounded px-3 py-2" />
+              </div>
+
+              <div class="flex items-center gap-2">
+                <input id="required-{{ section.id }}"
+                       type="checkbox"
+                       name="is_required"
+                       class="h-4 w-4 border rounded"
+                       checked />
+                <label for="required-{{ section.id }}"
+                       class="text-sm font-medium">
+                  Required
+                </label>
+              </div>
+
+              <div class="md:col-span-1">
+                <button type="submit"
+                        class="w-full inline-flex justify-center items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold shadow">
+                  + Add Task
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="text-slate-500 italic">
+        No sections yet. Use "Add Section" above to start building this template.
+      </p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

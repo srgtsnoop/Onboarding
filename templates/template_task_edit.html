@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Edit Task – {{ task.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- Breadcrumb / Header -->
+  <div class="space-y-1">
+    <a href="{{ url_for('edit_template', template_id=template.id) }}"
+       class="text-sm text-blue-600 underline">
+      ← Back to Template: {{ template.name }}
+    </a>
+    <h1 class="text-2xl font-bold">Edit Task</h1>
+    <p class="text-sm text-slate-500">
+      Section: {{ section.title }} • Template ID: {{ template.id }}
+    </p>
+  </div>
+
+  <!-- Edit Form -->
+  <form method="post"
+        action="{{ url_for('update_template_task',
+                           template_id=template.id,
+                           section_id=section.id,
+                           task_id=task.id) }}"
+        class="space-y-4">
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Title</label>
+      <input type="text"
+             name="title"
+             value="{{ task.title }}"
+             class="w-full border rounded px-3 py-2" />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Description</label>
+      <textarea name="description"
+                rows="3"
+                class="w-full border rounded px-3 py-2">{{ task.description or "" }}</textarea>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Responsible</label>
+        <select name="responsible_party"
+                class="w-full border rounded px-3 py-2">
+          <option value="new_hire"
+            {% if task.responsible_party == "new_hire" %}selected{% endif %}>
+            New Hire
+          </option>
+          <option value="manager"
+            {% if task.responsible_party == "manager" %}selected{% endif %}>
+            Manager
+          </option>
+          <option value="other"
+            {% if task.responsible_party == "other" %}selected{% endif %}>
+            Other
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Category</label>
+        <input type="text"
+               name="category"
+               value="{{ task.category or '' }}"
+               placeholder="e.g. Compliance"
+               class="w-full border rounded px-3 py-2" />
+      </div>
+    </div>
+
+    <div class="border border-slate-200 rounded-lg p-3 space-y-3">
+      <p class="text-sm font-semibold">Due Rule</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        <div>
+          <label class="block text-sm font-medium mb-1">Due Type</label>
+          <select name="due_type"
+                  class="w-full border rounded px-3 py-2">
+            <option value="days_from_start"
+              {% if task.due_type == "days_from_start" %}selected{% endif %}>
+              Days after start
+            </option>
+            <option value="day_within_section"
+              {% if task.due_type == "day_within_section" %}selected{% endif %}>
+              Day within section
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Offset days (if days from start)</label>
+          <input type="number"
+                 name="offset_days"
+                 value="{{ task.offset_days if task.offset_days is not none else '' }}"
+                 class="w-full border rounded px-3 py-2" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Section day (if day within section)</label>
+          <input type="number"
+                 name="section_day"
+                 value="{{ task.section_day if task.section_day is not none else '' }}"
+                 class="w-full border rounded px-3 py-2" />
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-500">
+        Use either "Days after start" with an offset, or "Day within section" with a day number.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <input id="is_required"
+             type="checkbox"
+             name="is_required"
+             class="h-4 w-4 border rounded"
+             {% if task.is_required %}checked{% endif %} />
+      <label for="is_required" class="text-sm font-medium">
+        Required task
+      </label>
+    </div>
+
+    <div class="flex justify-between items-center pt-4">
+      <a href="{{ url_for('edit_template', template_id=template.id) }}"
+         class="text-sm text-slate-600 underline">
+        Cancel
+      </a>
+      <button type="submit"
+              class="inline-flex justify-center items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold shadow">
+        Save Changes
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

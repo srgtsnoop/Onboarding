@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="max-w-5xl mx-auto py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">Onboarding Templates</h1>
+      {% if user.role in ["builder", "admin"] %}
+        <a href="{{ url_for('new_template_form') }}"
+           class="btn btn-primary">
+          + New Template
+        </a>
+      {% endif %}
+    </div>
+
+    {% if templates %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Role / Type</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tpl in templates %}
+            <tr>
+              <td>{{ tpl.name }}</td>
+
+              <!-- Status badge -->
+              <td>
+                {% if tpl.status == "published" %}
+                  <span class="px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-800">
+                    Published
+                  </span>
+                {% elif tpl.status == "retired" %}
+                  <span class="px-2 py-1 rounded-full text-xs bg-slate-200 text-slate-800">
+                    Retired
+                  </span>
+                {% else %}
+                  <span class="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+                    Draft
+                  </span>
+                {% endif %}
+              </td>
+
+              <td>{{ tpl.target_role or "-" }}</td>
+              <td>{{ tpl.updated_at or "" }}</td>
+
+              <!-- Actions -->
+              <td>
+                <div class="flex items-center gap-2">
+                  <!-- Edit always allowed for Builder/Admin -->
+                  <a href="{{ url_for('edit_template', template_id=tpl.id) }}"
+                    class="text-blue-600 underline text-sm">
+                    Edit
+                  </a>
+
+                  {% if user.role in ["builder", "admin"] %}
+                    {% if tpl.status == "draft" %}
+                      <!-- Publish button for Draft -->
+                      <form method="post"
+                            action="{{ url_for('publish_template', template_id=tpl.id) }}"
+                            style="display:inline;">
+                        <button type="submit"
+                                class="text-xs px-2 py-1 rounded bg-emerald-600 text-white">
+                          Publish
+                        </button>
+                      </form>
+                    {% elif tpl.status == "published" %}
+                      <!-- Retire button for Published -->
+                      <form method="post"
+                            action="{{ url_for('retire_template', template_id=tpl.id) }}"
+                            style="display:inline;">
+                        <button type="submit"
+                                class="text-xs px-2 py-1 rounded bg-slate-700 text-white">
+                          Retire
+                        </button>
+                      </form>
+                    {% endif %}
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+
+      </table>
+    {% else %}
+      <p>No templates yet. Click "New Template" to create your first onboarding blueprint.</p>
+    {% endif %}
+  </div>
+{% endblock %}

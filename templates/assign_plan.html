@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Assign Onboarding Plan{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6 space-y-6">
+
+  <div class="space-y-1">
+    <h1 class="text-2xl font-bold">Assign Onboarding Plan</h1>
+    <p class="text-sm text-slate-600">
+      Choose a team member, a published template, and a start date to create
+      a new onboarding plan.
+    </p>
+  </div>
+
+  {% if not templates %}
+    <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm">
+      There are no <strong>published</strong> templates available yet.
+      Ask a Builder or Admin to publish at least one template before assigning plans.
+    </div>
+  {% endif %}
+
+  <form method="post"
+        action="{{ url_for('assign_plan') }}"
+        class="space-y-4">
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Employee</label>
+      <select name="user_id"
+              class="w-full border rounded px-3 py-2"
+              required>
+        <option value="">Select a person...</option>
+        {% for emp in employees %}
+          <option value="{{ emp.id }}">
+            {{ emp.full_name }} ({{ emp.email }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Template</label>
+      <select name="template_id"
+              class="w-full border rounded px-3 py-2"
+              required
+              {% if not templates %}disabled{% endif %}>
+        {% if not templates %}
+          <option value="">No published templates</option>
+        {% else %}
+          <option value="">Select a template...</option>
+          {% for tpl in templates %}
+            <option value="{{ tpl.id }}">
+              {{ tpl.name }}{% if tpl.description %} – {{ tpl.description }}{% endif %}
+            </option>
+          {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Start date / Hire date</label>
+      <input type="date"
+             name="start_date"
+             value="{{ today }}"
+             class="border rounded px-3 py-2" />
+      <p class="text-xs text-slate-500 mt-1">
+        All week offsets and task due dates will be calculated from this date.
+      </p>
+    </div>
+
+    <div class="pt-4 flex justify-end">
+      <button type="submit"
+              class="inline-flex items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold shadow
+                     {% if not templates %}opacity-50 cursor-not-allowed{% endif %}">
+        Create Plan
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

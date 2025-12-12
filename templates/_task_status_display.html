@@ -3,7 +3,7 @@
 
 <div
   class="inline-block cursor-pointer"
-  hx-get="{{ url_for('edit_status_form', task_id=t.id) }}"
+  hx-get="{{ url_for('edit_status_form', task_id=t.id, as_user=user.email) }}"
   hx-target="closest td"
   hx-swap="innerHTML"
   title="Click to change status"

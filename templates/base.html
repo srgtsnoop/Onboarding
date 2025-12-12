@@ -38,13 +38,37 @@
       </form>
       {% endif %}
       <div class="ml-auto flex items-center gap-4 text-sm text-slate-600">
-        <a href="/manager/reports" class="hover:text-slate-900">Manager</a>
-        <a href="/admin/overview" class="hover:text-slate-900">Admin</a>
-        <a href="/templates" class="hover:text-slate-900">Builder</a>
-      </div>
-    </div>
-  </nav>
 
+        {% if user.role in ["manager", "admin"] %}
+          <a href="{{ url_for('manager_plans') }}"
+            class="hover:text-slate-900">
+            Manager Plans
+          </a>
+        {% endif %}
+
+        {% if user.role in ["manager", "admin"] %}
+          <a href="/manager/reports"
+            class="hover:text-slate-900">
+            Manager
+          </a>
+        {% endif %}
+
+        {% if user.role == "admin" %}
+          <a href="/admin/overview"
+            class="hover:text-slate-900">
+            Admin
+          </a>
+        {% endif %}
+
+        {% if user.role in ["builder", "admin"] %}
+          <a href="/templates"
+            class="hover:text-slate-900">
+            Builder
+          </a>
+        {% endif %}
+
+      </div>
+  </nav>
   <main class="max-w-6xl mx-auto p-4">
     {% block content %}{% endblock %}
   </main>

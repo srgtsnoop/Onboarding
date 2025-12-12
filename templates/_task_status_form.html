@@ -1,6 +1,6 @@
 {# templates/_task_status_form.html #}
 <form
-  hx-post="{{ url_for('update_status', task_id=t.id) }}"
+  hx-post="{{ url_for('update_status', task_id=t.id, as_user=user.email) }}"
   hx-target="closest td"
   hx-swap="innerHTML"
   class="inline-block"
@@ -26,7 +26,7 @@
     type="button"
     class="btn btn-primary btn-sm"
     onclick="event.stopPropagation();"
-    hx-post="{{ url_for('update_status', task_id=t.id) }}"
+    hx-post="{{ url_for('update_status', task_id=t.id, as_user=user.email) }}"
     hx-target="closest td"
     hx-swap="innerHTML"
     hx-include="closest td"
@@ -39,7 +39,7 @@
     type="button"
     class="btn btn-sm"
     onclick="event.stopPropagation();"
-    hx-get="{{ url_for('cancel_status_edit', task_id=t.id) }}"
+    hx-get="{{ url_for('cancel_status_edit', task_id=t.id, as_user=user.email) }}"
     hx-target="closest td"
     hx-swap="innerHTML"
   >

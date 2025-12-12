@@ -590,7 +590,7 @@ def edit_notes_form(task_id):
     principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
     ensure_week_access(principal, t.week)
-    return render_template("_task_notes_form.html", t=t)
+    return render_template("_task_notes_form.html", t=t, user=user)
 
 
 @app.post("/tasks/<int:task_id>/notes", endpoint="update_notes")
@@ -604,7 +604,7 @@ def update_notes(task_id):
     db.session.commit()
 
     if request.headers.get("HX-Request"):
-        return render_template("_task_notes_display.html", t=t)
+        return render_template("_task_notes_display.html", t=t, user=user)
     return redirect(url_for("week_detail", week_id=t.week_id, as_user=user.email))
 
 
@@ -614,7 +614,7 @@ def cancel_notes_edit(task_id):
     principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
     ensure_week_access(principal, t.week)
-    return render_template("_task_notes_display.html", t=t)
+    return render_template("_task_notes_display.html", t=t, user=user)
 
 
 # -----------------------------------------------------------------------------
@@ -641,7 +641,7 @@ def edit_date_form(task_id: int):
     principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
     ensure_week_access(principal, t.week)
-    return render_template("_task_date_form.html", t=t)
+    return render_template("_task_date_form.html", t=t, user=user)
 
 
 @app.get("/tasks/<int:task_id>/due-date/display", endpoint="date_display")
@@ -650,7 +650,7 @@ def date_display(task_id: int):
     principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
     ensure_week_access(principal, t.week)
-    return render_template("_task_date_display.html", t=t)
+    return render_template("_task_date_display.html", t=t, user=user)
 
 
 @app.post("/tasks/<int:task_id>/due-date", endpoint="update_due_date")
@@ -685,7 +685,7 @@ def update_due_date(task_id: int):
 
     t.due_date = parsed
     db.session.commit()
-    return render_template("_task_date_display.html", t=t)
+    return render_template("_task_date_display.html", t=t, user=user)
 
 
 # -----------------------------------------------------------------------------
@@ -697,7 +697,7 @@ def edit_status_form(task_id: int):
     principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
     ensure_week_access(principal, t.week)
-    return render_template("_task_status_form.html", t=t)
+    return render_template("_task_status_form.html", t=t, user=user)
 
 
 @app.get("/tasks/<int:task_id>/status/view", endpoint="view_status")
@@ -706,7 +706,7 @@ def view_status(task_id: int):
     principal = resolve_principal(user)
     t = ensure_task_for_user(task_id, user)
     ensure_week_access(principal, t.week)
-    return render_template("_task_status_display.html", t=t)
+    return render_template("_task_status_display.html", t=t, user=user)
 
 
 @app.post("/tasks/<int:task_id>/status", endpoint="update_status")
@@ -738,7 +738,7 @@ def update_status(task_id: int):
 
     # If this was an HTMX request, return the display fragment
     if request.headers.get("HX-Request"):
-        return render_template("_task_status_display.html", t=t)
+        return render_template("_task_status_display.html", t=t, user=user)
 
     # Non-HTMX fallback: go back to the week page
     return redirect(url_for("week_detail", week_id=t.week_id, as_user=user.email))
@@ -749,7 +749,7 @@ def cancel_status_edit(task_id):
     user = current_user()
     t = ensure_task_for_user(task_id, user)
     # Just go back to the normal display view for this cell
-    return render_template("_task_status_display.html", t=t)
+    return render_template("_task_status_display.html", t=t, user=user)
 
 
 # -----------------------------------------------------------------------------
@@ -1161,6 +1161,57 @@ def assign_plan():
 
     # If somehow there were no weeks, go to the employee's plan overview or home
     return redirect(url_for("home"))
+
+
+# -----------------------------------------------------------------------------
+# Routes: Manager see assigned templates
+# -----------------------------------------------------------------------------
+
+
+@app.get("/manager/plans")
+def manager_plans():
+    user = current_user()
+    require_manager_or_admin(user)
+
+    # If you have manager_id relationships, you can filter to direct reports.
+    # For now: show everyone who has a plan.
+    employees = (
+        User.query.filter(User.onboarding_plan_id.isnot(None))
+        .order_by(User.full_name.asc())
+        .all()
+    )
+
+    # Build summary stats (complete / total)
+    summaries = []
+    for emp in employees:
+        plan = OnboardingPlan.query.get(emp.onboarding_plan_id)
+        if not plan:
+            continue
+
+        weeks = Week.query.filter_by(onboarding_plan_id=plan.id).all()
+        week_ids = [w.id for w in weeks]
+        total_tasks = 0
+        complete_tasks = 0
+
+        if week_ids:
+            total_tasks = Task.query.filter(Task.week_id.in_(week_ids)).count()
+            complete_tasks = Task.query.filter(
+                Task.week_id.in_(week_ids), Task.status == StatusEnum.COMPLETE.value
+            ).count()
+
+        summaries.append(
+            {
+                "employee": emp,
+                "plan": plan,
+                "total_tasks": total_tasks,
+                "complete_tasks": complete_tasks,
+                "progress_pct": (
+                    int((complete_tasks / total_tasks) * 100) if total_tasks else 0
+                ),
+            }
+        )
+
+    return render_template("manager_plans.html", user=user, summaries=summaries)
 
 
 # -----------------------------------------------------------------------------

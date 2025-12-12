@@ -1,6 +1,6 @@
 {# templates/_task_notes_form.html #}
 <form
-  hx-post="{{ url_for('update_notes', task_id=t.id) }}"
+  hx-post="{{ url_for('update_notes', task_id=t.id, as_user=user.email) }}"
   hx-target="closest td"
   hx-swap="innerHTML"
   class="w-full"
@@ -21,7 +21,7 @@
       type="button"
       class="btn btn-sm"
       onclick="event.stopPropagation();"
-      hx-get="{{ url_for('cancel_notes_edit', task_id=t.id) }}"
+      hx-post="{{ url_for('update_notes', task_id=t.id, as_user=user.email) }}"
       hx-target="closest td"
       hx-swap="innerHTML"
     >

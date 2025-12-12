@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Assigned Onboarding Plans{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold">Assigned Onboarding Plans</h1>
+      <p class="text-sm text-slate-600">
+        Track onboarding progress and jump into an employee’s plan.
+      </p>
+    </div>
+    <a href="{{ url_for('assign_plan_form') }}"
+       class="inline-flex items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold shadow">
+      + Assign New Plan
+    </a>
+  </div>
+
+  {% if not summaries %}
+    <p class="text-slate-500 italic">No onboarding plans assigned yet.</p>
+  {% else %}
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-4 py-3 text-left">Employee</th>
+            <th class="px-4 py-3 text-left">Plan</th>
+            <th class="px-4 py-3 text-left">Progress</th>
+            <th class="px-4 py-3 text-left"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in summaries %}
+            <tr class="border-t border-slate-200">
+              <td class="px-4 py-3">
+                <div class="font-semibold">{{ row.employee.full_name }}</div>
+                <div class="text-xs text-slate-500">{{ row.employee.email }}</div>
+              </td>
+              <td class="px-4 py-3">
+                <div class="font-medium">{{ row.plan.name }}</div>
+                {% if row.plan.start_date %}
+                  <div class="text-xs text-slate-500">Start: {{ row.plan.start_date }}</div>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">
+                <div class="text-xs text-slate-600 mb-1">
+                  {{ row.complete_tasks }} / {{ row.total_tasks }} complete ({{ row.progress_pct }}%)
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2">
+                  <div class="bg-blue-600 h-2 rounded-full"
+                       style="width: {{ row.progress_pct }}%"></div>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-right">
+                {# Jump into their plan as them #}
+                <a href="{{ url_for('my_plan', as_user=row.employee.email) }}"
+                   class="text-blue-600 underline text-sm">
+                  View Plan
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

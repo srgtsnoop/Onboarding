@@ -9,7 +9,7 @@ from dateutil import parser as dtparser
 
 import time
 
-from flask import Flask, render_template, request, redirect, url_for, abort
+from flask import Flask, render_template, request, redirect, url_for, abort, session
 from Onboarding.models import (
     Week,
     Task,
@@ -342,14 +342,17 @@ def serialize_user_with_plan(user: User):
     }
 
 
+
 # -----------------------------------------------------------------------------
 # Context processors
 # -----------------------------------------------------------------------------
 
 
 @app.context_processor
-def inject_build_ts():
-    return {"build_ts": int(time.time())}
+def inject_user():
+    u = session.get("user")
+    # normalize to an object-ish mapping for Jinja
+    return {"user": u or {"role": "guest"}}
 
 
 @app.context_processor

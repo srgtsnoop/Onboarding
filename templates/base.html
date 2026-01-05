@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ title if title else 'Onboarding Plan' }}</title>
 
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
   <!-- Frameworks and scripts -->
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
@@ -39,35 +43,36 @@
       {% endif %}
       <div class="ml-auto flex items-center gap-4 text-sm text-slate-600">
 
-        {% if user.role in ["manager", "admin"] %}
-          <a href="{{ url_for('manager_plans') }}"
+        {% if user is defined and user and user.role in ["manager", "admin"] %}
+          <a href="{{ url_for('manager_plans', v=build_ts) }}"
             class="hover:text-slate-900">
             Manager Plans
           </a>
         {% endif %}
 
-        {% if user.role in ["manager", "admin"] %}
-          <a href="/manager/reports"
+        {% if user is defined and user and user.role in ["manager", "admin"] %}
+          <a href="/manager/reports?v={{ build_ts }}"
             class="hover:text-slate-900">
             Manager
           </a>
         {% endif %}
 
         {% if user.role == "admin" %}
-          <a href="/admin/overview"
+          <a href="/admin/overview?v={{ build_ts }}"
             class="hover:text-slate-900">
             Admin
           </a>
         {% endif %}
 
         {% if user.role in ["builder", "admin"] %}
-          <a href="/templates"
+          <a href="/templates?v={{ build_ts }}"
             class="hover:text-slate-900">
             Builder
           </a>
         {% endif %}
 
       </div>
+    </div>
   </nav>
   <main class="max-w-6xl mx-auto p-4">
     {% block content %}{% endblock %}

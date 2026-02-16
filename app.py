@@ -342,7 +342,6 @@ def serialize_user_with_plan(user: User):
     }
 
 
-
 # -----------------------------------------------------------------------------
 # Context processors
 # -----------------------------------------------------------------------------
@@ -868,6 +867,24 @@ def add_template_section(template_id: int):
     return redirect(url_for("edit_template", template_id=template_id))
 
 
+@app.post("/templates/<int:template_id>/sections/<int:section_id>/delete")
+def delete_template_section(template_id: int, section_id: int):
+    user = current_user()
+    require_builder_or_admin(user)
+
+    section = TemplateSection.query.filter_by(
+        id=section_id, template_id=template_id
+    ).first_or_404()
+
+    for task in section.tasks:
+        db.session.delete(task)
+
+    db.session.delete(section)
+    db.session.commit()
+
+    return redirect(url_for("edit_template", template_id=template_id))
+
+
 @app.post("/templates/<int:template_id>/sections/<int:section_id>/tasks")
 def add_template_task(template_id: int, section_id: int):
     user = current_user()
@@ -1042,6 +1059,27 @@ def update_template_task(template_id: int, section_id: int, task_id: int):
     db.session.commit()
 
     # Go back to the template editor
+    return redirect(url_for("edit_template", template_id=template_id))
+
+
+@app.post(
+    "/templates/<int:template_id>/sections/<int:section_id>/tasks/<int:task_id>/delete"
+)
+def delete_template_task(template_id: int, section_id: int, task_id: int):
+    user = current_user()
+    require_builder_or_admin(user)
+
+    section = TemplateSection.query.filter_by(
+        id=section_id, template_id=template_id
+    ).first_or_404()
+
+    task = TemplateTask.query.filter_by(
+        id=task_id, section_id=section.id
+    ).first_or_404()
+
+    db.session.delete(task)
+    db.session.commit()
+
     return redirect(url_for("edit_template", template_id=template_id))
 
 

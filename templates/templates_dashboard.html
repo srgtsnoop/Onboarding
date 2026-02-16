@@ -4,12 +4,17 @@
   <div class="max-w-5xl mx-auto py-8">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold">Onboarding Templates</h1>
-      {% if user.role in ["builder", "admin"] %}
-        <a href="{{ url_for('new_template_form') }}"
-           class="btn btn-primary">
-          + New Template
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('assign_plan') }}" class="btn btn-primary">
+          Assigner
         </a>
-      {% endif %}
+        {% if user.role in ["builder", "admin"] %}
+          <a href="{{ url_for('new_template_form') }}"
+             class="btn btn-primary">
+            + New Template
+          </a>
+        {% endif %}
+      </div>
     </div>
 
     {% if templates %}

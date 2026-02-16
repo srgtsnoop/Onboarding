@@ -18,6 +18,7 @@
 
   <!-- Edit Form -->
   <form method="post"
+        id="edit_task_form"
         action="{{ url_for('update_template_task',
                            template_id=template.id,
                            section_id=section.id,
@@ -121,17 +122,38 @@
       </label>
     </div>
 
-    <div class="flex justify-between items-center pt-4">
-      <a href="{{ url_for('edit_template', template_id=template.id) }}"
-         class="text-sm text-slate-600 underline">
-        Cancel
-      </a>
+  </form>
+
+  <div class="flex justify-between items-center pt-4">
+    <!-- Left side: Cancel -->
+    <a href="{{ url_for('edit_template', template_id=template.id) }}"
+       class="text-sm text-slate-600 underline">
+      Cancel
+    </a>
+
+    <!-- Right side: Delete + Save -->
+    <div class="flex items-center gap-3">
+      {% if template.status != "published" %}
+        <form method="post"
+              action="{{ url_for('delete_template_task',
+                                 template_id=template.id,
+                                 section_id=section.id,
+                                 task_id=task.id) }}"
+              onsubmit="return confirm('Delete this task from the template draft? This cannot be undone.');">
+          <button type="submit"
+                  class="inline-flex justify-center items-center px-4 py-2 rounded bg-red-600 text-white text-sm font-semibold shadow">
+            Delete Task
+          </button>
+        </form>
+      {% endif %}
+
       <button type="submit"
+              form="edit_task_form"
               class="inline-flex justify-center items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold shadow">
         Save Changes
       </button>
     </div>
-  </form>
+  </div>
 
 </div>
 {% endblock %}

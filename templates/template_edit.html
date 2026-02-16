@@ -2,6 +2,7 @@
 {% block title %}Edit Template – {{ template.name }}{% endblock %}
 
 {% block content %}
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 <div class="max-w-6xl mx-auto px-4 py-6 space-y-8">
 
   <!-- Header -->
@@ -88,6 +89,16 @@
                 </p>
               {% endif %}
             </div>
+            <div class="ml-4">
+              <form method="post"
+                    action="{{ url_for('delete_template_section', template_id=template.id, section_id=section.id) }}"
+                    onsubmit="return confirm('Delete this section? All tasks within it will also be deleted. This cannot be undone.');">
+                <button type="submit"
+                        class="text-sm text-red-600 hover:text-red-800 underline">
+                  Delete Section
+                </button>
+              </form>
+            </div>
           </div>
 
           <!-- Existing tasks table -->
@@ -164,21 +175,22 @@
                   action="{{ url_for('add_template_task',
                                      template_id=template.id,
                                      section_id=section.id) }}"
-                  class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-              <div class="md:col-span-2">
+                  class="grid grid-cols-1 md:grid-cols-6 gap-3 items-baseline">
+              <div class="md:col-span-6">
                 <label class="block text-sm font-medium mb-1">Title</label>
                 <input type="text" name="title"
                        placeholder="Meet with Manager"
                        class="w-full border rounded px-3 py-2" />
               </div>
 
-              <div class="md:col-span-2">
+              <div class="md:col-span-6 task-desc-container">
                 <label class="block text-sm font-medium mb-1">
                   Description
                 </label>
-                <input type="text" name="description"
-                       placeholder="Short description (optional)"
-                       class="w-full border rounded px-3 py-2" />
+                <div class="bg-white">
+                  <div class="quill-editor" style="height: 100px;"></div>
+                </div>
+                <input type="hidden" name="description">
               </div>
 
               <div>
@@ -265,4 +277,35 @@
   </div>
 
 </div>
+
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var editors = document.querySelectorAll('.quill-editor');
+    editors.forEach(function(editor) {
+      var quill = new Quill(editor, {
+        theme: 'snow',
+        placeholder: 'Short description (optional)',
+        modules: {
+          toolbar: [
+            ['bold', 'italic', 'underline'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+          ]
+        }
+      });
+      
+      var container = editor.closest('.task-desc-container');
+      var input = container.querySelector('input[name="description"]');
+      var form = container.closest('form');
+      
+      form.addEventListener('submit', function() {
+        if (quill.getText().trim().length === 0) {
+          input.value = '';
+        } else {
+          input.value = quill.root.innerHTML;
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

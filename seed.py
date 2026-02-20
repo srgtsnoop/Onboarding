@@ -18,15 +18,40 @@ def model_columns(model):
     return set(sa_inspect(model).columns.keys())
 
 
+def get_or_create(session, model, defaults=None, **kwargs):
+    """
+    Get an existing instance or create a new one.
+    If the instance exists, update it with values from `defaults`.
+    """
+    instance = session.query(model).filter_by(**kwargs).first()
+    if instance:
+        if defaults:
+            for key, value in defaults.items():
+                setattr(instance, key, value)
+        return instance, False
+    else:
+        params = kwargs.copy()
+        if defaults:
+            params.update(defaults)
+        instance = model(**params)
+        session.add(instance)
+        session.flush()
+        return instance, True
+
+
 with app.app_context():
     print("DB URI       =", app.config["SQLALCHEMY_DATABASE_URI"])
 
-    # Fresh start in dev
-    db.drop_all()
+    # We will now selectively delete and recreate the demo plan,
+    # and upsert the users to make this script safe to re-run.
+    # The cascades from OnboardingPlan should handle Weeks and Tasks.
+    OnboardingPlan.query.filter_by(name="Warranty Representative Onboarding Plan").delete(synchronize_session=False)
+    db.session.commit()
+
+    # create_all() is safe; it won't drop or modify existing tables.
     db.create_all()
 
     from sqlalchemy import inspect
-
     print("Tables at seed:", inspect(db.engine).get_table_names())
 
     # ---- Onboarding plan ----
@@ -90,15 +115,6 @@ with app.app_context():
             kw["sort_order"] = sort_order
         return kw
 
-    # t1 = Task(
-    #    **task_kwargs(
-    #        week_id=w1.id,
-    #        goal="Job shadow Joel (his desk)",
-    #        topic=("Communication/outage alarms"),
-    #        notes="Schedule meetings and catchups, if possible.",
-    #        sort_order=0,
-    #   )
-    # )
     t2 = Task(
         **task_kwargs(
             week_id=w1.id,
@@ -142,43 +158,35 @@ with app.app_context():
         )
     )
 
-    # db.session.add_all([t1, t2, t3])
     db.session.add_all([t2, t3])
 
     # ---- Users ----
     user_cols = model_columns(User)
     print("User columns:", sorted(user_cols))
 
-    def user_kwargs(full_name: str, email: str, role: RoleEnum, manager=None):
-        kw = {
-            "full_name": full_name,
-            "email": email,
-            "role": role.value if hasattr(role, "value") else role,
-        }
-        if "onboarding_plan_id" in user_cols:
-            kw["onboarding_plan_id"] = plan.id
-        if "manager_id" in user_cols and manager is not None:
-            kw["manager_id"] = manager.id
-        return kw
+    admin, _ = get_or_create(db.session, User, email="admin@example.com", defaults={
+        "full_name": "Avery Admin",
+        "role": RoleEnum.ADMIN.value
+    })
 
-    admin = User(**user_kwargs("Avery Admin", "admin@example.com", RoleEnum.ADMIN))
-    manager = User(
-        **user_kwargs("Morgan Manager", "manager@example.com", RoleEnum.MANAGER)
-    )
+    manager, _ = get_or_create(db.session, User, email="manager@example.com", defaults={
+        "full_name": "Morgan Manager",
+        "role": RoleEnum.MANAGER.value
+    })
 
-    db.session.add_all([admin, manager])
-    db.session.flush()
-
-    user = User(
-        **user_kwargs("Uma User", "user@example.com", RoleEnum.USER, manager=manager)
-    )
-
-    db.session.add(user)
+    # The user for the demo plan needs to be linked to the new plan
+    user_defaults = {
+        "full_name": "Uma User",
+        "role": RoleEnum.USER.value,
+        "manager_id": manager.id,
+        "onboarding_plan_id": plan.id,
+    }
+    user, _ = get_or_create(db.session, User, email="user@example.com", defaults=user_defaults)
 
     db.session.commit()
 
     print(
-        "✅ Seed complete! Weeks: {weeks}, Tasks: {tasks}, Users: {users}".format(
+        "Seed complete! Weeks: {weeks}, Tasks: {tasks}, Users: {users}".format(
             weeks=Week.query.count(),
             tasks=Task.query.count(),
             users=User.query.count(),

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Import Template</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; line-height: 1.5; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .error { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; padding: 1rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        input[type="file"] { display: block; margin-bottom: 1rem; width: 100%; padding: 0.5rem; border: 1px solid #ccc; }
+        button { background-color: #007bff; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; font-size: 1rem; border-radius: 0.25rem; }
+        button:hover { background-color: #0056b3; }
+        a { margin-left: 1rem; color: #666; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .help-text { font-size: 0.9em; color: #555; margin-bottom: 1.5rem; background: #f9f9f9; padding: 1rem; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Import Onboarding Template</h1>
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        <div class="help-text">
+            <p><strong>Instructions:</strong> Upload a .docx file containing tables for each week.</p>
+            <ul style="margin-bottom:0; padding-left: 1.2rem;">
+                <li>Top header row must contain "Week X" (e.g., "Week 1", "Week 2").</li>
+                <li>Column headers must include "Training" and "Desired Outcomes".</li>
+            </ul>
+        </div>
+        <label>Select Word Document (.docx)</label>
+        <input type="file" name="file" accept=".docx,.dotx" required>
+        
+        <button type="submit">Upload and Process</button>
+        <a href="{{ url_for('templates_dashboard') }}">Cancel</a>
+    </form>
+</div>
+</body>
+</html>

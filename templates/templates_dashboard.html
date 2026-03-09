@@ -9,6 +9,10 @@
           Assigner
         </a>
         {% if user.role in ["builder", "admin"] %}
+          <a href="{{ url_for('import_template_form') }}"
+             class="btn btn-primary">
+            Import Template
+          </a>
           <a href="{{ url_for('new_template_form') }}"
              class="btn btn-primary">
             + New Template
@@ -63,6 +67,16 @@
                   </a>
 
                   {% if user.role in ["builder", "admin"] %}
+                    <form method="post"
+                          action="{{ url_for('delete_template', template_id=tpl.id) }}"
+                          style="display:inline;"
+                          onsubmit="return confirm('This action cannot be undone. Are you sure you want to delete this template?');">
+                      <button type="submit"
+                              class="text-red-600 underline text-sm">
+                        Delete
+                      </button>
+                    </form>
+
                     {% if tpl.status == "draft" %}
                       <!-- Publish button for Draft -->
                       <form method="post"

@@ -1,5 +1,7 @@
-flask==3.0.3
-flask_sqlalchemy==3.1.1
-sqlalchemy==2.0.32
-python-dateutil==2.9.0.post0
-pytest==8.4.2
+Flask
+Flask-SQLAlchemy
+bleach
+markdown-it-py
+python-dateutil
+python-docx
+pytest

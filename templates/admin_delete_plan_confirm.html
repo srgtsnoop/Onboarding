@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-8">
+    <div class="bg-white border border-red-200 rounded-lg shadow-sm overflow-hidden">
+        <div class="bg-red-600 px-4 py-3">
+            <h4 class="text-lg font-medium text-white">Remove Onboarding Plan</h4>
+        </div>
+        <div class="p-6">
+            <h5 class="text-lg font-medium text-slate-900 mb-2">Removing Plan for {{ target_user.full_name }}</h5>
+            <p class="text-slate-600 mb-6">
+                You are about to remove the onboarding plan <strong>{{ plan.name }}</strong>.
+                This will permanently delete all weeks and tasks associated with this plan.
+            </p>
+
+            {% if started_tasks_count > 0 %}
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                    <div class="text-sm text-yellow-700">
+                        <strong>Warning:</strong> This plan has {{ started_tasks_count }} task(s) that are 
+                        "In Progress" or "Complete".
+                        <br>
+                        To confirm removal, please type the user's full name: <strong>{{ target_user.full_name }}</strong>
+                    </div>
+                </div>
+            {% else %}
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                    <p class="text-sm text-blue-700">Are you sure you want to remove this plan?</p>
+                </div>
+            {% endif %}
+
+            {% if error %}
+                <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+                    <p class="text-sm text-red-700">{{ error }}</p>
+                </div>
+            {% endif %}
+
+            <form method="POST">
+                {% if started_tasks_count > 0 %}
+                    <div class="mb-6">
+                        <label for="confirmation_name" class="block text-sm font-medium text-slate-700 mb-1">Confirm User Name</label>
+                        <input type="text" class="w-full rounded-md border-slate-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm" id="confirmation_name" name="confirmation_name" required>
+                    </div>
+                {% endif %}
+                
+                <div class="flex gap-3">
+                    <a href="{{ url_for('admin_overview') }}" class="px-4 py-2 bg-white border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50">Cancel</a>
+                    <button type="submit" class="px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700">Remove Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

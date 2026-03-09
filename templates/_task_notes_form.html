@@ -7,10 +7,12 @@
 >
   <textarea
     name="notes"
+    id="notes-edit-textarea"
     rows="3"
     class="w-full text-sm border rounded-md p-1"
     autofocus
   >{{ t.notes or "" }}</textarea>
+  <div class="text-xs text-slate-500 mt-1">You can use Markdown for formatting.</div>
 
   <div class="mt-2 flex gap-2">
     <button type="submit" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">

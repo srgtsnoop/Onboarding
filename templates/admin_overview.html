@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="mb-6 space-y-2">
+      {% for category, message in messages %}
+        <div class="p-4 border-l-4 {{ 'bg-green-50 border-green-400 text-green-700' if category == 'success' else 'bg-blue-50 border-blue-400 text-blue-700' }}">
+          <p class="text-sm">{{ message }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
 <div class="flex items-center justify-between mb-6">
   <div>
     <p class="text-sm text-slate-500">{{ admin.full_name }} • Admin</p>
@@ -42,11 +54,25 @@
           </td>
           <td class="align-top">{{ user.role|capitalize }}</td>
           <td class="align-top">{{ user.manager.full_name if user.manager else '—' }}</td>
-          <td class="align-top">{{ user.onboarding_plan.name if user.onboarding_plan else '—' }}</td>
+          <td class="align-top">
+            {% if user.onboarding_plan %}
+              <div>{{ user.onboarding_plan.name }}</div>
+              <button hx-get="{{ url_for('admin_delete_user_plan', user_id=user.id) }}" 
+                      hx-target="#modal-container"
+                      class="text-xs text-red-600 hover:text-red-800 hover:underline mt-1 inline-block bg-transparent border-0 p-0 cursor-pointer">
+                Remove Plan
+              </button>
+            {% else %}
+              —
+            {% endif %}
+          </td>
           <td class="align-top">{{ user.onboarding_plan.weeks|length if user.onboarding_plan else 0 }}</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+<!-- Container for the modal -->
+<div id="modal-container"></div>
 {% endblock %}

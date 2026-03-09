@@ -19,9 +19,11 @@
 
         <div>
           <label for="topic" class="block text-sm font-medium mb-1">Topic (optional)</label>
-          <input id="topic" name="topic" type="text"
-                 placeholder="Separate topics with ; or newlines"
-                 class="w-full border border-gray-300 rounded-md px-3 py-2">
+          <textarea id="topic-textarea" name="topic"
+                 placeholder="Enter topics, one per line. Markdown is supported."
+                 class="w-full border border-gray-300 rounded-md px-3 py-2"
+                 rows="3"></textarea>
+          <p class="text-xs text-slate-500 mt-1">You can use Markdown for formatting and create lists.</p>
         </div>
       </div>
 
@@ -34,8 +36,10 @@
 
         <div class="md:col-span-2">
           <label for="notes" class="block text-sm font-medium mb-1">Notes (optional)</label>
-          <input id="notes" name="notes" type="text" placeholder="Notes…"
-                 class="w-full border border-gray-300 rounded-md px-3 py-2">
+          <textarea id="notes-textarea" name="notes" placeholder="Notes…"
+                 class="w-full border border-gray-300 rounded-md px-3 py-2"
+                 rows="3"></textarea>
+          <p class="text-xs text-slate-500 mt-1">You can use Markdown for formatting.</p>
         </div>
       </div>
 
@@ -80,13 +84,13 @@
               {% endfor %}
 
               {% if cleaned|length > 1 %}
-                <ul class="goal-topic list-disc pl-5 mt-1">
+                <ul class="goal-topic list-disc pl-5 mt-1 prose">
                   {% for item in cleaned %}
-                    <li>{{ item }}</li>
+                    <li>{{ render_markdown(item) | safe }}</li>
                   {% endfor %}
                 </ul>
               {% elif cleaned|length == 1 %}
-                <div class="goal-topic mt-1 text-muted">{{ cleaned[0] }}</div>
+                <div class="goal-topic mt-1 text-muted prose">{{ render_markdown(cleaned[0]) | safe }}</div>
               {% endif %}
             {% endif %}
           </td>

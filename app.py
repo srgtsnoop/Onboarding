@@ -9,7 +9,18 @@ from dateutil import parser as dtparser
 
 import time
 
-from flask import Flask, render_template, request, redirect, url_for, abort, session
+import bleach
+from markdown_it import MarkdownIt
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    abort,
+    session,
+    flash,
+)
 from Onboarding.models import (
     Week,
     Task,
@@ -277,7 +288,7 @@ def create_plan_from_template(
                 title=tmpl_task.title,
                 goal=tmpl_task.title,
                 topic=getattr(tmpl_task, "description", None),
-                notes=getattr(tmpl_task, "description", None),
+                notes="",
                 sort_order=sort_idx,
                 status=StatusEnum.NOT_STARTED.value,
             )
@@ -343,8 +354,48 @@ def serialize_user_with_plan(user: User):
 
 
 # -----------------------------------------------------------------------------
+# Markdown and HTML sanitization
+# -----------------------------------------------------------------------------
+md = MarkdownIt("commonmark", {"breaks": True, "html": True, "linkify": True})
+
+
+def render_markdown(text: str | None) -> str:
+    if not text:
+        return ""
+
+    # Convert markdown to HTML
+    html = md.render(text.strip())
+
+    # Sanitize the HTML to allow only safe tags, including links
+    allowed_tags = [
+        "a",
+        "p",
+        "br",
+        "strong",
+        "em",
+        "ul",
+        "ol",
+        "li",
+        "code",
+        "pre",
+        "u",
+    ]
+    allowed_attrs = {"a": ["href", "title", "target"]}
+
+    clean_html = bleach.clean(
+        html, tags=allowed_tags, attributes=allowed_attrs, strip=True
+    )
+    return clean_html
+
+
+# -----------------------------------------------------------------------------
 # Context processors
 # -----------------------------------------------------------------------------
+
+
+@app.context_processor
+def inject_markdown_renderer():
+    return dict(render_markdown=render_markdown)
 
 
 @app.context_processor
@@ -541,6 +592,70 @@ def api_admin_overview():
             for p in plans
         ],
     }
+
+
+@app.route("/admin/users/<int:user_id>/plan/delete", methods=["GET", "POST"])
+def admin_delete_user_plan(user_id: int):
+    admin = current_user()
+    require_role(admin, {RoleEnum.ADMIN.value})
+
+    target_user = User.query.get_or_404(user_id)
+    plan = target_user.onboarding_plan
+
+    if not plan:
+        # No plan to delete, redirect back to overview
+        return redirect(url_for("admin_overview"))
+
+    # Check for started tasks (In Progress or Complete)
+    started_tasks_count = (
+        Task.query.join(Week)
+        .filter(
+            Week.onboarding_plan_id == plan.id,
+            Task.status.in_([StatusEnum.IN_PROGRESS.value, StatusEnum.COMPLETE.value]),
+        )
+        .count()
+    )
+
+    # If this is an HTMX request (from the modal trigger), return the modal partial
+    if request.headers.get("HX-Request") and request.method == "GET":
+        return render_template(
+            "admin_delete_plan_modal.html",
+            admin=admin,
+            target_user=target_user,
+            plan=plan,
+            started_tasks_count=started_tasks_count,
+        )
+
+    if request.method == "POST":
+        # If started tasks exist, verify confirmation
+        if started_tasks_count > 0:
+            confirm_name = (request.form.get("confirmation_name") or "").strip()
+            if confirm_name != target_user.full_name:
+                return render_template(
+                    "admin_delete_plan_confirm.html",
+                    admin=admin,
+                    target_user=target_user,
+                    plan=plan,
+                    started_tasks_count=started_tasks_count,
+                    error="Name does not match. Please try again.",
+                )
+
+        # Proceed with deletion
+        target_user.onboarding_plan_id = None
+        db.session.delete(plan)
+        db.session.commit()
+        flash(
+            f"Onboarding plan for {target_user.full_name} has been removed.", "success"
+        )
+        return redirect(url_for("admin_overview"))
+
+    return render_template(
+        "admin_delete_plan_confirm.html",
+        admin=admin,
+        target_user=target_user,
+        plan=plan,
+        started_tasks_count=started_tasks_count,
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -757,6 +872,220 @@ def cancel_status_edit(task_id):
 # -----------------------------------------------------------------------------
 # Routes: Create simple onboarding templates
 # -----------------------------------------------------------------------------
+
+
+@app.get("/templates/import")
+def import_template_form():
+    user = current_user()
+    require_builder_or_admin(user)
+    return render_template("template_import.html", user=user)
+
+
+@app.post("/templates/import")
+def import_template_process():
+    user = current_user()
+    require_builder_or_admin(user)
+
+    if "file" not in request.files:
+        return redirect(request.url)
+
+    f = request.files["file"]
+    if not f.filename:
+        return redirect(request.url)
+
+    if not (
+        f.filename.lower().endswith(".docx") or f.filename.lower().endswith(".dotx")
+    ):
+        return (
+            render_template(
+                "template_import.html",
+                user=user,
+                error="Invalid file type. Please upload a .docx file.",
+            ),
+            400,
+        )
+
+    try:
+        import docx
+    except ImportError:
+        return (
+            render_template(
+                "template_import.html",
+                user=user,
+                error="Server missing 'python-docx' library. Please install it.",
+            ),
+            500,
+        )
+
+    try:
+        # 1. Create the Template container
+        base_name = os.path.splitext(os.path.basename(f.filename))[0]
+        tpl = OnboardingTemplate(
+            name=f"Imported: {base_name}",
+            description=f"Imported from {f.filename} on {date.today()}",
+            status=TemplateStatusEnum.DRAFT.value,
+            created_by_id=user.id,
+        )
+        db.session.add(tpl)
+        db.session.flush()
+
+        # 2. Parse the DOCX
+        doc = docx.Document(f)
+        week_pattern = re.compile(r"Week\s+(\d+)", re.IGNORECASE)
+        section_order = 1
+
+        for table in doc.tables:
+            if not table.rows:
+                continue
+
+            # 1. Identify Header Row (Training / Outcomes)
+            # Check first 3 rows to find headers
+            header_row_index = -1
+            train_idx = -1
+            outcome_idx = -1
+
+            for r_idx in range(min(3, len(table.rows))):
+                row_cells = [c.text.strip().lower() for c in table.rows[r_idx].cells]
+                t_i = -1
+                o_i = -1
+                for c_i, txt in enumerate(row_cells):
+                    if "training" in txt:
+                        t_i = c_i
+                    if "outcome" in txt or "goal" in txt:
+                        o_i = c_i
+
+                if t_i != -1 and o_i != -1:
+                    header_row_index = r_idx
+                    train_idx = t_i
+                    outcome_idx = o_i
+                    break
+
+            if header_row_index == -1:
+                continue
+
+            # 2. Determine Section Title & Offset
+            title = f"Section {section_order}"
+            offset_days = (section_order - 1) * 7
+
+            # If header is not row 0, check row 0 for title info
+            if header_row_index > 0:
+                # Combine text from row 0 cells to find "Week X"
+                row0_text_parts = []
+                seen_text = set()
+                for c in table.rows[0].cells:
+                    t = c.text.strip()
+                    if t and t not in seen_text:
+                        row0_text_parts.append(t)
+                        seen_text.add(t)
+
+                row0_text = " ".join(row0_text_parts).strip()
+                if row0_text:
+                    title = row0_text
+                    match = week_pattern.search(row0_text)
+                    if match:
+                        try:
+                            w_num = int(match.group(1))
+                            offset_days = max(0, (w_num - 1) * 7)
+                        except ValueError:
+                            pass
+
+            # Create Section
+            section = TemplateSection(
+                template_id=tpl.id,
+                title=title,
+                offset_days=offset_days,
+                order_index=section_order,
+            )
+            db.session.add(section)
+            db.session.flush()
+            section_order += 1
+
+            # --- Parse Tasks (Rows after header) ---
+            task_order = 1
+            for row in table.rows[header_row_index + 1 :]:
+                cells = row.cells
+                if len(cells) <= max(train_idx, outcome_idx):
+                    continue
+
+                t_title = cells[train_idx].text.strip()
+                t_desc = cells[outcome_idx].text.strip()
+
+                if not t_title:
+                    continue
+
+                task = TemplateTask(
+                    section_id=section.id,
+                    title=t_title,
+                    description=t_desc,
+                    responsible_party=ResponsiblePartyEnum.NEW_HIRE.value,
+                    due_type=DueTypeEnum.DAY_WITHIN_SECTION.value,
+                    section_day=1,
+                    order_index=task_order,
+                    is_required=False,
+                )
+                db.session.add(task)
+                task_order += 1
+
+        db.session.commit()
+        return redirect(url_for("preview_template", template_id=tpl.id))
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Import failed: {e}")
+        return (
+            render_template(
+                "template_import.html",
+                user=user,
+                error=f"Error processing file: {str(e)}",
+            ),
+            500,
+        )
+
+
+@app.route("/templates/<int:template_id>/preview", methods=["GET", "POST"])
+def preview_template(template_id: int):
+    user = current_user()
+    require_builder_or_admin(user)
+
+    tpl = (
+        OnboardingTemplate.query.options(
+            selectinload(OnboardingTemplate.sections).selectinload(
+                TemplateSection.tasks
+            )
+        )
+        .filter_by(id=template_id)
+        .first_or_404()
+    )
+
+    if request.method == "POST":
+        # Update Template Name
+        new_name = request.form.get("name", "").strip()
+        if new_name:
+            tpl.name = new_name
+
+        # Update Section Titles
+        for section in tpl.sections:
+            key = f"section_{section.id}_title"
+            new_sec_title = request.form.get(key, "").strip()
+            if new_sec_title:
+                section.title = new_sec_title
+
+        db.session.commit()
+        return redirect(url_for("edit_template", template_id=tpl.id))
+
+    return render_template("template_import_preview.html", user=user, template=tpl)
+
+
+@app.post("/templates/<int:template_id>/cancel_import")
+def cancel_import(template_id: int):
+    user = current_user()
+    require_builder_or_admin(user)
+
+    tpl = OnboardingTemplate.query.get_or_404(template_id)
+    db.session.delete(tpl)
+    db.session.commit()
+
+    return redirect(url_for("templates_dashboard"))
 
 
 @app.get("/templates/new")
@@ -1114,6 +1443,19 @@ def retire_template(template_id: int):
     if tpl.status != TemplateStatusEnum.RETIRED.value:
         tpl.status = TemplateStatusEnum.RETIRED.value
         db.session.commit()
+
+    return redirect(url_for("templates_dashboard"))
+
+
+@app.post("/templates/<int:template_id>/delete")
+def delete_template(template_id: int):
+    user = current_user()
+    require_builder_or_admin(user)
+
+    tpl = OnboardingTemplate.query.get_or_404(template_id)
+
+    db.session.delete(tpl)
+    db.session.commit()
 
     return redirect(url_for("templates_dashboard"))
 

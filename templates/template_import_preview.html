@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <h1 class="text-2xl font-bold mb-6">Preview Import</h1>
+    
+    <form method="POST" action="{{ url_for('preview_template', template_id=template.id) }}">
+        
+        <!-- Template Name -->
+        <div class="mb-6 p-4 bg-white shadow rounded">
+            <label class="block text-gray-700 text-sm font-bold mb-2" for="name">
+                Template Name
+            </label>
+            <input type="text" name="name" id="name" value="{{ template.name }}"
+                   class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        </div>
+
+        <!-- Sections -->
+        <div class="space-y-4 mb-8">
+            <h2 class="text-xl font-semibold">Sections</h2>
+            {% for section in template.sections %}
+            <div class="p-4 bg-white shadow rounded border-l-4 border-blue-500">
+                <div class="mb-2">
+                    <label class="block text-gray-700 text-sm font-bold mb-1" for="section_{{ section.id }}_title">
+                        Section Title (Original: {{ section.title }})
+                    </label>
+                    <input type="text" name="section_{{ section.id }}_title" id="section_{{ section.id }}_title" value="{{ section.title }}"
+                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                
+                <!-- Preview Tasks (Read-only) -->
+                <div class="mt-3 pl-4 border-l-2 border-gray-200">
+                    <p class="text-xs text-gray-500 uppercase font-bold mb-1">Tasks Preview:</p>
+                    <ul class="list-disc list-inside text-sm text-gray-600">
+                        {% for task in section.tasks %}
+                        <li>{{ task.title }}</li>
+                        {% else %}
+                        <li class="italic text-gray-400">No tasks found.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between mt-8">
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Confirm Import
+            </button>
+            
+            <button type="submit" formaction="{{ url_for('cancel_import', template_id=template.id) }}" formmethod="POST"
+                    class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Cancel Import
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

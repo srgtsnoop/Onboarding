@@ -195,7 +195,9 @@ def require_builder_or_admin(user: User):
 
 def require_manager_or_admin(user: User):
     """
-    Allow Manager and Admin to assign onboarding plans.
+    Allow Manager and Admin to view manager-facing pages (e.g. the
+    assigned plans list). Does NOT grant permission to assign plans —
+    see require_admin for that.
     Optionally also allow Builder if that role exists.
     """
     allowed = {RoleEnum.MANAGER.value, RoleEnum.ADMIN.value}
@@ -203,6 +205,11 @@ def require_manager_or_admin(user: User):
     if hasattr(RoleEnum, "BUILDER"):
         allowed.add(RoleEnum.BUILDER.value)
     require_role(user, allowed)
+
+
+def require_admin(user: User):
+    """Allow only Admin to assign onboarding plans to team members."""
+    require_role(user, {RoleEnum.ADMIN.value})
 
 
 def weeks_for_plan(plan_id: int | None):
@@ -1546,7 +1553,7 @@ def delete_template(template_id: int):
 @app.get("/assign")
 def assign_plan_form():
     user = current_user()
-    require_manager_or_admin(user)
+    require_admin(user)
 
     # Only published templates should be assignable
     templates = (
@@ -1570,7 +1577,7 @@ def assign_plan_form():
 @app.post("/assign")
 def assign_plan():
     user = current_user()
-    require_manager_or_admin(user)
+    require_admin(user)
 
     template_id_raw = request.form.get("template_id") or ""
     employee_id_raw = request.form.get("user_id") or ""
@@ -1634,13 +1641,13 @@ def manager_plans():
     user = current_user()
     require_manager_or_admin(user)
 
-    # If you have manager_id relationships, you can filter to direct reports.
-    # For now: show everyone who has a plan.
-    employees = (
-        User.query.filter(User.onboarding_plan_id.isnot(None))
-        .order_by(User.full_name.asc())
-        .all()
-    )
+    query = User.query.filter(User.onboarding_plan_id.isnot(None))
+    if user.role == RoleEnum.MANAGER.value:
+        # Direct reports only — a manager-of-managers does not see their
+        # reports' reports (e.g. Avery manages Morgan, Morgan manages Uma:
+        # Avery sees Morgan but not Uma).
+        query = query.filter(User.manager_id == user.id)
+    employees = query.order_by(User.full_name.asc()).all()
 
     # Build summary stats (complete / total)
     summaries = []

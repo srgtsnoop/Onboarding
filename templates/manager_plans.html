@@ -8,13 +8,15 @@
     <div>
       <h1 class="text-2xl font-bold">Assigned Onboarding Plans</h1>
       <p class="text-sm text-slate-600">
-        Track onboarding progress and jump into an employee’s plan.
+        Track onboarding progress and jump into a Team Member’s plan.
       </p>
     </div>
+    {% if user.role == "admin" %}
     <a href="{{ url_for('assign_plan_form') }}"
        class="inline-flex items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold shadow">
       + Assign New Plan
     </a>
+    {% endif %}
   </div>
 
   {% if not summaries %}
@@ -24,7 +26,7 @@
       <table class="min-w-full text-sm">
         <thead class="bg-slate-50">
           <tr>
-            <th class="px-4 py-3 text-left">Employee</th>
+            <th class="px-4 py-3 text-left">Team Member</th>
             <th class="px-4 py-3 text-left">Plan</th>
             <th class="px-4 py-3 text-left">Progress</th>
             <th class="px-4 py-3 text-left"></th>
@@ -54,7 +56,7 @@
               </td>
               <td class="px-4 py-3 text-right">
                 {# Jump into their plan as them #}
-                <a href="{{ url_for('my_plan', as_user=row.employee.email) }}"
+                <a href="{{ url_for('weeks', as_user=row.employee.email) }}"
                    class="text-blue-600 underline text-sm">
                   View Plan
                 </a>

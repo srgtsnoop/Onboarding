@@ -46,14 +46,7 @@
         {% if user is defined and user and user.role in ["manager", "admin"] %}
           <a href="{{ url_for('manager_plans', v=build_ts) }}"
             class="hover:text-slate-900">
-            Manager Plans
-          </a>
-        {% endif %}
-
-        {% if user is defined and user and user.role in ["manager", "admin"] %}
-          <a href="/manager/reports?v={{ build_ts }}"
-            class="hover:text-slate-900">
-            Manager
+            Direct Report Plans
           </a>
         {% endif %}
 

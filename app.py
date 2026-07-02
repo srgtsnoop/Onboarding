@@ -41,6 +41,7 @@ from Onboarding.extensions import db
 from Onboarding.policy import (
     Principal,
     ensure_week_access,
+    filter_weeks_for_principal,
     get_current_principal,
 )
 
@@ -51,12 +52,6 @@ PROJ_DIR = os.path.join(BASE_DIR, "Onboarding")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(PROJ_DIR, "static")
 INSTANCE_DIR = os.path.join(PROJ_DIR, "instance")
-
-print("BASE_DIR     =", BASE_DIR)
-print("PROJ_DIR     =", PROJ_DIR)
-print("TEMPLATES_DIR=", TEMPLATES_DIR)
-print("STATIC_DIR   =", STATIC_DIR)
-print("INSTANCE_DIR =", INSTANCE_DIR)
 
 os.makedirs(INSTANCE_DIR, exist_ok=True)
 
@@ -89,9 +84,7 @@ from Onboarding.models import Week, Task, StatusEnum  # noqa: E402
 with app.app_context():
     from sqlalchemy import inspect
 
-    print("Metadata tables pre-create_all:", list(db.metadata.tables))
     db.create_all()
-    print("Tables now:", inspect(db.engine).get_table_names())
 
 # -----------------------------------------------------------------------------
 # Helpers: parse user-entered date strings for due_date
@@ -140,19 +133,41 @@ def current_user() -> User:
     development without explicit context. Raises 404 if no users exist.
     """
 
-    email = request.headers.get("X-User-Email") or request.args.get("as_user")
+    email = (
+        request.headers.get("X-User-Email")
+        or request.args.get("as_user")
+        or session.get("as_user")
+    )
     query = User.query.options(selectinload(User.onboarding_plan))
 
     if email:
         user = query.filter_by(email=email).first()
         if not user:
-            abort(404, description="User not found")
-        return user
+            # Stale session value (e.g. reseeded DB): clear it and fall through.
+            if session.get("as_user") == email and not (
+                request.headers.get("X-User-Email") or request.args.get("as_user")
+            ):
+                session.pop("as_user", None)
+            else:
+                abort(404, description="User not found")
+        else:
+            # Persist the selection so navigation keeps the chosen identity.
+            if request.args.get("as_user"):
+                session["as_user"] = email
+            return user
 
     user = query.order_by(User.id.asc()).first()
     if not user:
         abort(404, description="No users available")
     return user
+
+
+def optional_current_user() -> User | None:
+    """Like current_user() but returns None instead of aborting."""
+    try:
+        return current_user()
+    except Exception:
+        return None
 
 
 def resolve_principal(user: User) -> Principal:
@@ -428,23 +443,86 @@ def index():
     return redirect(url_for("weeks"))
 
 
+def _has_header_principal() -> bool:
+    return "X-User-Role" in request.headers or "X-User-Id" in request.headers
+
+
+def week_progress(week: Week) -> dict:
+    """Completion stats for a week: total, done, percent, overdue count."""
+    tasks = week.tasks or []
+    total = len(tasks)
+    done = sum(1 for t in tasks if t.is_complete())
+    today = date.today()
+    overdue = sum(
+        1 for t in tasks if t.due_date and t.due_date < today and not t.is_complete()
+    )
+    percent = int(round(done / total * 100)) if total else 0
+    return {"total": total, "done": done, "percent": percent, "overdue": overdue}
+
+
 @app.get("/weeks")
 def weeks():
-    user = current_user()
-    plan_weeks = weeks_for_plan(user.onboarding_plan_id)
-    return render_template("weeks.html", weeks=plan_weeks, user=user)
+    user = optional_current_user()
+
+    if _has_header_principal():
+        # API/header-driven access: honor the role-based access policy.
+        principal = get_current_principal()
+        plan_weeks = (
+            filter_weeks_for_principal(principal)
+            .options(selectinload(Week.tasks))
+            .order_by(Week.start_date.asc().nullsfirst(), Week.id.asc())
+            .all()
+        )
+    else:
+        if user is None:
+            abort(404, description="No users available")
+        plan_weeks = weeks_for_plan(user.onboarding_plan_id)
+
+    progress = {w.id: week_progress(w) for w in plan_weeks}
+    totals = {
+        "total": sum(p["total"] for p in progress.values()),
+        "done": sum(p["done"] for p in progress.values()),
+        "overdue": sum(p["overdue"] for p in progress.values()),
+    }
+    totals["percent"] = (
+        int(round(totals["done"] / totals["total"] * 100)) if totals["total"] else 0
+    )
+
+    return render_template(
+        "weeks.html",
+        weeks=plan_weeks,
+        user=user or {"role": "guest"},
+        progress=progress,
+        totals=totals,
+    )
 
 
 @app.get("/weeks/<int:week_id>")
 def week_detail(week_id: int):
-    user = current_user()
-    w = ensure_week_for_user(week_id, user)
+    user = optional_current_user()
+
+    if _has_header_principal():
+        w = Week.query.options(selectinload(Week.tasks)).get(week_id)
+        if not w:
+            abort(404)
+        ensure_week_access(get_current_principal(), w)
+    else:
+        if user is None:
+            abort(404, description="No users available")
+        w = ensure_week_for_user(week_id, user)
+
     tasks = (
         Task.query.filter_by(week_id=w.id)
         .order_by(Task.sort_order.asc(), Task.id.asc())
         .all()
     )
-    return render_template("week_detail.html", w=w, tasks=tasks, user=user)
+    return render_template(
+        "week_detail.html",
+        w=w,
+        tasks=tasks,
+        user=user or {"role": "guest"},
+        progress=week_progress(w),
+    )
 
 
 @app.get("/templates")
@@ -1607,6 +1685,9 @@ def healthz():
 
 @app.get("/debug/db")
 def debug_db():
+    user = optional_current_user()
+    if not user or user.role != RoleEnum.ADMIN.value:
+        abort(403)
     return {
         "db_path": app.config["SQLALCHEMY_DATABASE_URI"],
         "weeks_count": Week.query.count(),

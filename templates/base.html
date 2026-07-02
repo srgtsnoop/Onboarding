@@ -75,37 +75,26 @@
     </div>
   </nav>
   <main class="max-w-6xl mx-auto p-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for category, message in messages %}
+          <div class="flex items-start justify-between rounded-lg border px-4 py-3 text-sm
+                      {% if category == 'success' %}bg-green-50 border-green-200 text-green-800
+                      {% elif category in ['error', 'danger'] %}bg-red-50 border-red-200 text-red-800
+                      {% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800
+                      {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}"
+               role="alert">
+            <span>{{ message }}</span>
+            <button type="button" class="ml-4 font-bold opacity-60 hover:opacity-100"
+                    onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </main>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      function checkTextarea(id) {
-        const el = document.getElementById(id);
-        if (el) {
-          console.log(`Checking element with id: ${id}`);
-          if (el.tagName.toLowerCase() !== 'textarea') {
-            console.log(`Element ${id} is NOT a textarea. It has been modified into a <${el.tagName}>. The outerHTML is:`);
-            console.log(el.outerHTML);
-          } else {
-            console.log(`Element ${id} is still a <textarea>.`);
-          }
-        }
-      }
-
-      // Check textareas on the main page
-      checkTextarea('topic-textarea');
-      checkTextarea('notes-textarea');
-
-      // Since the inline edit form is loaded via HTMX, we need to check
-      // for it after it has been loaded. We can use an htmx:afterSwap event.
-      document.body.addEventListener('htmx:afterSwap', function(event) {
-        // Check for the inline editor textarea
-        if (event.detail.target.querySelector('#notes-edit-textarea')) {
-          checkTextarea('notes-edit-textarea');
-        }
-      });
-    });
-  </script>
 </body>
 </html>

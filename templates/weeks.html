@@ -14,6 +14,23 @@
   </div>
 </div>
 
+{% if totals and totals.total > 0 %}
+<div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+  <div class="flex items-center justify-between text-sm mb-2">
+    <span class="font-medium text-slate-700">Overall progress</span>
+    <span class="text-slate-600">
+      {{ totals.done }}/{{ totals.total }} tasks ({{ totals.percent }}%)
+      {% if totals.overdue %}
+        <span class="ml-2 inline-block rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium">{{ totals.overdue }} overdue</span>
+      {% endif %}
+    </span>
+  </div>
+  <div class="w-full bg-slate-100 rounded-full h-2.5">
+    <div class="h-2.5 rounded-full {% if totals.percent == 100 %}bg-green-500{% else %}bg-blue-500{% endif %}" style="width: {{ totals.percent }}%"></div>
+  </div>
+</div>
+{% endif %}
+
 {% if not weeks %}
   <div class="bg-white border rounded-xl p-6 shadow-sm">
     <p class="text-slate-600">No weeks found for this onboarding plan.</p>
@@ -21,7 +38,8 @@
 {% else %}
   <div class="grid md:grid-cols-2 gap-4">
       {% for w in weeks %}
-          <a href="{{ url_for('week_detail', week_id=w.id, as_user=request.args.get('as_user')) }}" class="block p-4 rounded-2xl bg-white shadow hover:shadow-md transition border">
+          {% set p = progress[w.id] if progress else none %}
+          <a href="{{ url_for('week_detail', week_id=w.id) }}" class="block p-4 rounded-2xl bg-white shadow hover:shadow-md transition border">
               <div class="flex items-center justify-between">
                   <div>
                       <h2 class="text-lg font-semibold">{{ w.title }}</h2>
@@ -31,7 +49,21 @@
                   </div>
                   <span class="text-slate-400">→</span>
               </div>
+              {% if p %}
+              <div class="mt-3 flex items-center justify-between text-sm text-slate-600">
+                <span>{{ p.done }}/{{ p.total }} tasks complete</span>
+                {% if p.overdue %}
+                  <span class="rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium">{{ p.overdue }} overdue</span>
+                {% elif p.total > 0 and p.percent == 100 %}
+                  <span class="rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs font-medium">Done ✓</span>
+                {% endif %}
+              </div>
+              <div class="mt-1.5 w-full bg-slate-100 rounded-full h-2">
+                <div class="h-2 rounded-full {% if p.percent == 100 %}bg-green-500{% else %}bg-blue-500{% endif %}" style="width: {{ p.percent }}%"></div>
+              </div>
+              {% else %}
               <p class="mt-2 text-slate-600">{{ w.tasks|length }} tasks</p>
+              {% endif %}
           </a>
       {% endfor %}
   </div>

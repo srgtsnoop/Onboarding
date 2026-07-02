@@ -4,7 +4,23 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-6">
 
-  <h1 class="text-2xl font-semibold mb-4">{{ w.title }} Detail</h1>
+  <div class="mb-4">
+    <a href="{{ url_for('weeks') }}" class="text-sm text-blue-600 hover:underline">&larr; All weeks</a>
+    <h1 class="text-2xl font-semibold mt-1">{{ w.title }}</h1>
+    {% if progress and progress.total > 0 %}
+    <div class="mt-2 max-w-md">
+      <div class="flex items-center justify-between text-sm text-slate-600 mb-1">
+        <span>{{ progress.done }}/{{ progress.total }} tasks complete ({{ progress.percent }}%)</span>
+        {% if progress.overdue %}
+          <span class="rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium">{{ progress.overdue }} overdue</span>
+        {% endif %}
+      </div>
+      <div class="w-full bg-slate-100 rounded-full h-2">
+        <div class="h-2 rounded-full {% if progress.percent == 100 %}bg-green-500{% else %}bg-blue-500{% endif %}" style="width: {{ progress.percent }}%"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 
   {# ---------- Add Task ---------- #}
   <div class="bg-white border border-gray-200 rounded-lg p-4 mb-6">

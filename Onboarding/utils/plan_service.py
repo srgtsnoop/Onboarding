@@ -23,6 +23,19 @@ def weeks_for_plan(plan_id: int | None) -> list[Week]:
     )
 
 
+def week_progress(week: Week) -> dict:
+    """Completion stats for a week: total, done, percent, overdue count."""
+    tasks = week.tasks or []
+    total = len(tasks)
+    done = sum(1 for t in tasks if t.is_complete())
+    today = date.today()
+    overdue = sum(
+        1 for t in tasks if t.due_date and t.due_date < today and not t.is_complete()
+    )
+    percent = int(round(done / total * 100)) if total else 0
+    return {"total": total, "done": done, "percent": percent, "overdue": overdue}
+
+
 def create_plan_from_template(
     template_id: int, employee: User, start_date: date
 ) -> tuple[OnboardingPlan, list[Week]]:  # ← fixed return type

@@ -8,7 +8,7 @@
       <div class="mb-4 text-red-600">{{ error }}</div>
     {% endif %}
 
-    <form method="post" action="{{ url_for('create_template') }}" class="space-y-4">
+    <form method="post" action="{{ url_for('templates.create_template') }}" class="space-y-4">
       <div>
         <label class="block font-semibold mb-1">Template Name</label>
         <input type="text"

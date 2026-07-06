@@ -13,12 +13,12 @@
     {% if t.notes %}
       <div class="notes-preview small">{{ t.notes | replace('\n','<br>') | safe }}</div>
       <a class="muted-link small d-block mt-1"
-         hx-get="{{ url_for('edit_notes_form', task_id=t.id) }}"
+         hx-get="{{ url_for('tasks.edit_notes_form', task_id=t.id) }}"
          hx-target="#task-{{ t.id }}"
          hx-swap="outerHTML">Edit notes</a>
     {% else %}
       <a class="muted-link small"
-         hx-get="{{ url_for('edit_notes_form', task_id=t.id) }}"
+         hx-get="{{ url_for('tasks.edit_notes_form', task_id=t.id) }}"
          hx-target="#task-{{ t.id }}"
          hx-swap="outerHTML">Click to add notes</a>
     {% endif %}

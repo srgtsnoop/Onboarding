@@ -1,7 +1,7 @@
 {# templates/_task_notes_display.html #}
 <div
   class="notes-display whitespace-pre-wrap text-sm cursor-pointer prose"
-  hx-get="{{ url_for('edit_notes_form', task_id=t.id, as_user=user.email) }}"
+  hx-get="{{ url_for('tasks.edit_notes_form', task_id=t.id, as_user=user.email) }}"
   hx-target="closest td"
   hx-swap="innerHTML"
   title="Click to edit notes"

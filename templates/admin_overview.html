@@ -57,7 +57,7 @@
           <td class="align-top">
             {% if user.onboarding_plan %}
               <div>{{ user.onboarding_plan.name }}</div>
-              <button hx-get="{{ url_for('admin_delete_user_plan', user_id=user.id) }}" 
+              <button hx-get="{{ url_for('admin.admin_delete_user_plan', user_id=user.id) }}" 
                       hx-target="#modal-container"
                       class="text-xs text-red-600 hover:text-red-800 hover:underline mt-1 inline-block bg-transparent border-0 p-0 cursor-pointer">
                 Remove Plan

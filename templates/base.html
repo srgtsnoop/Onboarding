@@ -44,7 +44,7 @@
       <div class="ml-auto flex items-center gap-4 text-sm text-slate-600">
 
         {% if user is defined and user and user.role in ["manager", "admin"] %}
-          <a href="{{ url_for('manager_plans', v=build_ts) }}"
+          <a href="{{ url_for('manager.manager_plans', v=build_ts) }}"
             class="hover:text-slate-900">
             Direct Report Plans
           </a>

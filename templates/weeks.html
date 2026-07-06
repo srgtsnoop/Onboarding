@@ -42,7 +42,7 @@
   <div class="grid md:grid-cols-2 gap-4">
       {% for w in weeks %}
           {% set p = progress[w.id] if progress else none %}
-          <a href="{{ url_for('week_detail', week_id=w.id) }}" class="block p-4 rounded-2xl bg-white shadow hover:shadow-md transition border">
+          <a href="{{ url_for('weeks.week_detail', week_id=w.id) }}" class="block p-4 rounded-2xl bg-white shadow hover:shadow-md transition border">
               <div class="flex items-center justify-between">
                   <div>
                       <h2 class="text-lg font-semibold">{{ w.title }}</h2>

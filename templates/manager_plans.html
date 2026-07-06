@@ -12,7 +12,7 @@
       </p>
     </div>
     {% if user.role == "admin" %}
-    <a href="{{ url_for('assign_plan_form') }}"
+    <a href="{{ url_for('manager.assign_plan_form') }}"
        class="inline-flex items-center px-4 py-2 rounded bg-emerald-600 text-white text-sm font-semibold shadow">
       + Assign New Plan
     </a>
@@ -56,7 +56,7 @@
               </td>
               <td class="px-4 py-3 text-right">
                 {# Jump into their plan as them #}
-                <a href="{{ url_for('weeks', view_user_id=row.employee.id) }}"
+                <a href="{{ url_for('weeks.weeks', view_user_id=row.employee.id) }}"
                    class="text-blue-600 underline text-sm">
                   View Plan
                 </a>

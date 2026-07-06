@@ -1,7 +1,11 @@
-from Onboarding.models import Week, User, OnboardingPlan
+"""JSON serialization helpers for API-style endpoints."""
+from __future__ import annotations
+
+from Onboarding.models import User, Week
+from Onboarding.utils.plan_service import weeks_for_plan
 
 
-def serialize_week(week: Week) -> dict:
+def serialize_week(week: Week):
     return {
         "id": week.id,
         "title": week.title,
@@ -11,9 +15,7 @@ def serialize_week(week: Week) -> dict:
     }
 
 
-def serialize_user_with_plan(user: User) -> dict:
-    from Onboarding.utils.plan_service import weeks_for_plan
-
+def serialize_user_with_plan(user: User):
     plan = user.onboarding_plan
     return {
         "id": user.id,

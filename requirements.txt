@@ -1,7 +1,7 @@
-Flask
-Flask-SQLAlchemy
-bleach
-markdown-it-py
-python-dateutil
-python-docx
-pytest
+Flask>=3.1.0,<4
+Flask-SQLAlchemy>=3.1.1,<4
+bleach>=6.1.0,<7
+markdown-it-py>=3.0.0,<4
+python-dateutil>=2.9.0,<3
+python-docx>=1.1.2,<2
+pytest>=8.3.4,<9

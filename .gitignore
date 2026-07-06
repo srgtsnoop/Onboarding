@@ -6,3 +6,6 @@ instance/
 .venv/
 venv/
 .env
+*.bak-*
+*.zip
+.claude/

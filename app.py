@@ -329,20 +329,25 @@ def create_plan_from_template(
 
 
 def ensure_week_for_user(week_id: int, user: User) -> Week:
-    week = (
-        Week.query.filter_by(id=week_id, onboarding_plan_id=user.onboarding_plan_id)
-        .options(selectinload(Week.tasks))
-        .first()
-    )
+    """Fetch a week by id and authorize it against the acting user.
+
+    Authorization goes through ``ensure_week_access`` (owner, direct
+    manager, or admin) rather than requiring the week's plan to belong
+    to ``user`` directly — that's what lets a manager open a direct
+    report's week without impersonating them via ``as_user``.
+    """
+    week = Week.query.options(selectinload(Week.tasks)).get(week_id)
     if not week:
         abort(404)
+    ensure_week_access(resolve_principal(user), week)
     return week
 
 
 def ensure_task_for_user(task_id: int, user: User) -> Task:
     task = Task.query.options(selectinload(Task.week)).get(task_id)
-    if not task or task.week.onboarding_plan_id != user.onboarding_plan_id:
+    if not task:
         abort(404)
+    ensure_week_access(resolve_principal(user), task.week)
     return task
 
 
@@ -470,6 +475,8 @@ def week_progress(week: Week) -> dict:
 @app.get("/weeks")
 def weeks():
     user = optional_current_user()
+    viewing_user = user
+    viewing_as_manager = False
 
     if _has_header_principal():
         # API/header-driven access: honor the role-based access policy.
@@ -483,7 +490,22 @@ def weeks():
     else:
         if user is None:
             abort(404, description="No users available")
-        plan_weeks = weeks_for_plan(user.onboarding_plan_id)
+
+        # A manager (or admin) can look at a direct report's plan without
+        # taking over their session identity — see view_user_id, not as_user.
+        view_user_id = request.args.get("view_user_id", type=int)
+        if view_user_id and view_user_id != user.id:
+            viewing_user = User.query.options(
+                selectinload(User.onboarding_plan)
+            ).get_or_404(view_user_id)
+            if not (
+                user.role == RoleEnum.ADMIN.value
+                or viewing_user.manager_id == user.id
+            ):
+                abort(403)
+            viewing_as_manager = True
+
+        plan_weeks = weeks_for_plan(viewing_user.onboarding_plan_id)
 
     progress = {w.id: week_progress(w) for w in plan_weeks}
     totals = {
@@ -499,6 +521,8 @@ def weeks():
         "weeks.html",
         weeks=plan_weeks,
         user=user or {"role": "guest"},
+        viewing_user=viewing_user or {"role": "guest"},
+        viewing_as_manager=viewing_as_manager,
         progress=progress,
         totals=totals,
     )
@@ -586,6 +610,7 @@ def manager_reports():
     return render_template(
         "manager_reports.html",
         manager=manager,
+        user=manager,
         reports=reports,
     )
 
@@ -634,6 +659,7 @@ def admin_overview():
     return render_template(
         "admin_overview.html",
         admin=admin,
+        user=admin,
         users=users,
         plans=plans,
     )
@@ -719,6 +745,7 @@ def admin_delete_user_plan(user_id: int):
                 return render_template(
                     "admin_delete_plan_confirm.html",
                     admin=admin,
+                    user=admin,
                     target_user=target_user,
                     plan=plan,
                     started_tasks_count=started_tasks_count,
@@ -737,6 +764,7 @@ def admin_delete_user_plan(user_id: int):
     return render_template(
         "admin_delete_plan_confirm.html",
         admin=admin,
+        user=admin,
         target_user=target_user,
         plan=plan,
         started_tasks_count=started_tasks_count,
@@ -1641,13 +1669,17 @@ def manager_plans():
     user = current_user()
     require_manager_or_admin(user)
 
-    query = User.query.filter(User.onboarding_plan_id.isnot(None))
-    if user.role == RoleEnum.MANAGER.value:
-        # Direct reports only — a manager-of-managers does not see their
-        # reports' reports (e.g. Avery manages Morgan, Morgan manages Uma:
-        # Avery sees Morgan but not Uma).
-        query = query.filter(User.manager_id == user.id)
-    employees = query.order_by(User.full_name.asc()).all()
+    # Direct reports only — a manager-of-managers does not see their
+    # reports' reports (e.g. Avery manages Morgan, Morgan manages Uma:
+    # Avery sees Morgan but not Uma). Applies to admins too; admins get
+    # full org visibility from /admin/overview instead.
+    employees = (
+        User.query.filter(
+            User.onboarding_plan_id.isnot(None), User.manager_id == user.id
+        )
+        .order_by(User.full_name.asc())
+        .all()
+    )
 
     # Build summary stats (complete / total)
     summaries = []

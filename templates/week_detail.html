@@ -5,7 +5,11 @@
 <div class="max-w-7xl mx-auto px-4 py-6">
 
   <div class="mb-4">
+    {% if user is defined and user.id and w.owner_user_id and w.owner_user_id != user.id %}
+    <a href="{{ url_for('weeks', view_user_id=w.owner_user_id) }}" class="text-sm text-blue-600 hover:underline">&larr; All weeks</a>
+    {% else %}
     <a href="{{ url_for('weeks') }}" class="text-sm text-blue-600 hover:underline">&larr; All weeks</a>
+    {% endif %}
     <h1 class="text-2xl font-semibold mt-1">{{ w.title }}</h1>
     {% if progress and progress.total > 0 %}
     <div class="mt-2 max-w-md">

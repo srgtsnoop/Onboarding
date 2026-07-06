@@ -171,7 +171,8 @@ with app.app_context():
 
     manager, _ = get_or_create(db.session, User, email="manager@example.com", defaults={
         "full_name": "Morgan Manager",
-        "role": RoleEnum.MANAGER.value
+        "role": RoleEnum.MANAGER.value,
+        "manager_id": admin.id,
     })
 
     # The user for the demo plan needs to be linked to the new plan

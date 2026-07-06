@@ -56,7 +56,7 @@
               </td>
               <td class="px-4 py-3 text-right">
                 {# Jump into their plan as them #}
-                <a href="{{ url_for('weeks', as_user=row.employee.email) }}"
+                <a href="{{ url_for('weeks', view_user_id=row.employee.id) }}"
                    class="text-blue-600 underline text-sm">
                   View Plan
                 </a>

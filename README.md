@@ -27,7 +27,7 @@ is remembered for the session):
 - `/weeks/<id>` – week detail: add tasks, inline-edit status/notes/due dates (HTMX)
 - `/templates` – build reusable onboarding templates (builder/admin)
 - `/templates/import` – import a template from a Word (.docx) file
-- `/assign` – assign a published template to a new hire (manager/admin)
+- `/assign` – assign a published template to a new hire (admin only)
 - `/manager/reports`, `/manager/plans`, `/admin/overview` – role dashboards
 
 ## API-style access
@@ -37,11 +37,31 @@ is remembered for the session):
 the access policy in `Onboarding/policy.py` (users see only their own weeks,
 managers see their reports' weeks, admins see everything).
 
+## Project structure
+
+- `app.py` – app creation, config, context processors, blueprint registration
+- `Onboarding/routes/` – all route handlers, one blueprint per area:
+  `weeks`, `tasks` (inline HTMX editing), `templates` (incl. DOCX import),
+  `manager` (reports + assignment), `admin`
+- `Onboarding/utils/` – shared logic: `user_service` (identity + role checks),
+  `plan_service` (progress stats, template -> plan instantiation),
+  `serializers`, `dates`, `markdown`
+- `Onboarding/policy.py` – the role-based week access policy
+- `Onboarding/models.py` – SQLAlchemy models
+
+Endpoint names are blueprint-qualified (e.g. `url_for('weeks.week_detail')`).
+A smoke test asserts every `url_for` used in templates resolves, so a renamed
+or missing endpoint fails the suite instead of erroring at runtime.
+
 ## Tests
 
 ```bash
 pytest test/ test_roles.py
 ```
+
+Coverage includes the access policy, the three hot paths (DOCX import, plan
+assignment, task inline editing), endpoint-reference integrity, and per-role
+page render smoke tests.
 
 ## Configuration
 

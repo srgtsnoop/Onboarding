@@ -59,6 +59,31 @@ with app.app_context():
     db.session.add(plan)
     db.session.flush()
 
+    # ---- Users (created before weeks so weeks can be assigned an owner/manager) ----
+    user_cols = model_columns(User)
+    print("User columns:", sorted(user_cols))
+
+    admin, _ = get_or_create(db.session, User, email="admin@example.com", defaults={
+        "full_name": "Avery Admin",
+        "role": RoleEnum.ADMIN.value
+    })
+
+    manager, _ = get_or_create(db.session, User, email="manager@example.com", defaults={
+        "full_name": "Morgan Manager",
+        "role": RoleEnum.MANAGER.value,
+        "manager_id": admin.id,
+    })
+
+    # The user for the demo plan needs to be linked to the new plan
+    user_defaults = {
+        "full_name": "Uma User",
+        "role": RoleEnum.USER.value,
+        "manager_id": manager.id,
+        "onboarding_plan_id": plan.id,
+    }
+    user, _ = get_or_create(db.session, User, email="user@example.com", defaults=user_defaults)
+    db.session.flush()
+
     # ---- Weeks ----
     week_cols = model_columns(Week)
     print("Week columns:", sorted(week_cols))
@@ -75,6 +100,12 @@ with app.app_context():
             kw["title"] = f"Week {i}"
         elif "name" in week_cols:
             kw["name"] = f"Week {i}"
+        # The access policy (Onboarding/policy.py) grants week access by
+        # owner/manager, so every week needs these set or non-admins get 403.
+        if "owner_user_id" in week_cols:
+            kw["owner_user_id"] = user.id
+        if "manager_user_id" in week_cols:
+            kw["manager_user_id"] = manager.id
         return kw
 
     start = date.today()
@@ -159,30 +190,6 @@ with app.app_context():
     )
 
     db.session.add_all([t2, t3])
-
-    # ---- Users ----
-    user_cols = model_columns(User)
-    print("User columns:", sorted(user_cols))
-
-    admin, _ = get_or_create(db.session, User, email="admin@example.com", defaults={
-        "full_name": "Avery Admin",
-        "role": RoleEnum.ADMIN.value
-    })
-
-    manager, _ = get_or_create(db.session, User, email="manager@example.com", defaults={
-        "full_name": "Morgan Manager",
-        "role": RoleEnum.MANAGER.value,
-        "manager_id": admin.id,
-    })
-
-    # The user for the demo plan needs to be linked to the new plan
-    user_defaults = {
-        "full_name": "Uma User",
-        "role": RoleEnum.USER.value,
-        "manager_id": manager.id,
-        "onboarding_plan_id": plan.id,
-    }
-    user, _ = get_or_create(db.session, User, email="user@example.com", defaults=user_defaults)
 
     db.session.commit()
 

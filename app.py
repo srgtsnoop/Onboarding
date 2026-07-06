@@ -31,8 +31,14 @@ app = Flask(
 )
 
 DB_PATH = Path(BASE_DIR, "db.sqlite3").as_posix()
+# Tests set this env var (see conftest.py) before this module is first
+# imported, since the SQLAlchemy engine binds to whatever URI is in
+# app.config at that point and does NOT rebind on later config changes
+# (db.engine.dispose() only closes pooled connections, not the bound URL).
 app.config.update(
-    SQLALCHEMY_DATABASE_URI=f"sqlite:///{DB_PATH}",
+    SQLALCHEMY_DATABASE_URI=os.environ.get(
+        "SQLALCHEMY_DATABASE_URI", f"sqlite:///{DB_PATH}"
+    ),
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret"),
 )

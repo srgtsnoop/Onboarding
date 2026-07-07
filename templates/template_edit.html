@@ -19,7 +19,7 @@
     </div>
     <div class="text-right space-y-2">
       <a href="{{ url_for('templates.templates_dashboard') }}"
-         class="text-sm text-blue-600 underline">
+         class="text-sm text-brand-600 underline">
         ← Back to Templates
       </a>
       {# Publish / Clone buttons can go here later #}
@@ -59,7 +59,7 @@
       </div>
       <div class="md:col-span-1">
         <button type="submit"
-                class="mt-2 w-full inline-flex justify-center items-center px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold shadow">
+                class="mt-2 w-full inline-flex justify-center items-center px-4 py-2 rounded bg-brand-600 hover:bg-brand-700 transition-colors text-white text-sm font-semibold shadow">
           + Add Section
         </button>
       </div>
@@ -148,7 +148,7 @@
                                             template_id=template.id,
                                             section_id=section.id,
                                             task_id=t.id) }}"
-                           class="text-blue-600 underline text-xs">
+                           class="text-brand-600 underline text-xs">
                           Edit
                         </a>
                       </td>

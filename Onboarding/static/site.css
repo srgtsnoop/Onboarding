@@ -1,27 +1,49 @@
 /* Minor tweaks; Tailwind handles most styling */
 textarea { resize: vertical; }
 
+:root {
+  --brand: #005fa2;
+  --brand-dark: #004a80;
+  --brand-light: #e6f2fb;
+}
+
+/* -------------------------
+   Form Focus States
+-------------------------- */
+input[type="text"], input[type="date"], input[type="number"],
+input[type="email"], input[type="password"], textarea, select {
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+input[type="text"]:focus, input[type="date"]:focus, input[type="number"]:focus,
+input[type="email"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px rgba(0, 95, 162, 0.15);
+}
+
 /* -------------------------
    Table Styling
 -------------------------- */
-.table { 
-  width: 100%; 
-  border-collapse: separate; 
-  border-spacing: 0; 
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 /* Header */
 .table thead tr {
-  background: #f3f4f6;                /* light gray header background */
+  background: var(--brand-light);
 }
 
-.table thead th { 
-  text-align: left;                   
-  vertical-align: middle;             
-  font-weight: 700;                   
-  padding: 12px 14px;                 
-  border-bottom: 1px solid #e5e7eb;   
-  line-height: 1.25rem;               
+.table thead th {
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 700;
+  color: var(--brand-dark);
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--brand);
+  line-height: 1.25rem;
 }
 
 /* Optional rounded corners on first and last header cells */
@@ -102,28 +124,31 @@ textarea { resize: vertical; }
 }
 
 .badge-gray { background: #f3f4f6; color: #374151; }
-.badge-blue { background: #e6f0ff; color: #1f4dbd; }
+.badge-blue { background: var(--brand-light); color: var(--brand-dark); }
 .badge-green { background: #e8f6ed; color: #166534; }
 
 /* -------------------------
    Buttons
 -------------------------- */
-.btn { 
-  display: inline-block; 
-  padding: 6px 12px; 
-  border-radius: 6px; 
-  border: 0; 
+.btn {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 0;
   cursor: pointer;
   text-align: center;
   vertical-align: middle;
+  transition: background-color .15s ease, box-shadow .15s ease, transform .1s ease;
 }
 
-.btn-primary { 
-  background: #0f172a; 
-  color: #fff; 
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 95, 162, .25);
 }
 
-.btn-primary:hover { opacity: .9; }
+.btn-primary:hover { background: var(--brand-dark); }
+.btn-primary:active { transform: translateY(1px); }
 
 /* -----------------------
     Button Small

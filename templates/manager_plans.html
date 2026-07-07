@@ -50,14 +50,14 @@
                   {{ row.complete_tasks }} / {{ row.total_tasks }} complete ({{ row.progress_pct }}%)
                 </div>
                 <div class="w-full bg-slate-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full"
+                  <div class="bg-brand-600 h-2 rounded-full"
                        style="width: {{ row.progress_pct }}%"></div>
                 </div>
               </td>
               <td class="px-4 py-3 text-right">
                 {# Jump into their plan as them #}
                 <a href="{{ url_for('weeks.weeks', view_user_id=row.employee.id) }}"
-                   class="text-blue-600 underline text-sm">
+                   class="text-brand-600 underline text-sm">
                   View Plan
                 </a>
               </td>
